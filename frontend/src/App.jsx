@@ -8,6 +8,10 @@ import {
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  "https://wildfire-api-440479996053.europe-west1.run.app";
+
 function App() {
   const [fires, setFires] = useState([]);
   const [days, setDays] = useState("1");
@@ -16,25 +20,24 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const apiUrl = "https://wildfire-api-440479996053.europe-west1.run.app";
-
-    fetch(`${apiUrl}/fires?days=${days}`, { signal: controller.signal })
+    fetch(`${API_URL}/fires?days=${days}`, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`API request failed (${response.status})`);
         }
         return response.json();
       })
-      .then((data) => setFires(data))
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setFires(data);
+          setLoading(false);
+        }
+      })
       .catch((requestError) => {
         if (requestError.name !== "AbortError") {
           setError("Fire detections could not be loaded. Please try again.");
-          console.error("Error:", requestError);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
           setLoading(false);
+          console.error("Error:", requestError);
         }
       });
 
@@ -43,7 +46,7 @@ function App() {
 
   return (
     <main>
-      <h1> Wildfire Tracker</h1>
+      <h1>Wildfire Tracker</h1>
       <p>Active wildfire detections</p>
 
       <div className="controls">
@@ -89,7 +92,7 @@ function App() {
             radius={8}
           >
             <Popup>
-              <strong>🔥 Fire detection</strong>
+              <strong>Fire detection</strong>
               <br />
               Date: {fire.acq_date}
               <br />

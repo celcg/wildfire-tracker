@@ -16,6 +16,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "https://project-d66d4e5f-ee28-4c77-845.web.app",
         "https://project-d66d4e5f-ee28-4c77-845.firebaseapp.com",
     ],
