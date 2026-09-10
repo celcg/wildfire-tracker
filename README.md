@@ -82,8 +82,7 @@ GET /
 GET /fires?days=1
 GET /fires?days=3
 GET /fires?days=5
-GET /stats
+GET /stats?days=1
 ```
 
 Using a `days` query parameter keeps the resource-oriented API extensible and avoids creating separate endpoints for every supported time window.
-

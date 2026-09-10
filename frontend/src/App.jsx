@@ -6,21 +6,71 @@ import {
   Popup,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import "./App.css";
 
 function App() {
   const [fires, setFires] = useState([]);
+  const [days, setDays] = useState("1");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("https://wildfire-api-440479996053.europe-west1.run.app/fires")
-      .then((response) => response.json())
+    const controller = new AbortController();
+    const apiUrl = "https://wildfire-api-440479996053.europe-west1.run.app";
+
+    fetch(`${apiUrl}/fires?days=${days}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`API request failed (${response.status})`);
+        }
+        return response.json();
+      })
       .then((data) => setFires(data))
-      .catch((error) => console.error("Error:", error));
-  }, []);
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") {
+          setError("Fire detections could not be loaded. Please try again.");
+          console.error("Error:", requestError);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [days]);
 
   return (
     <main>
       <h1> Wildfire Tracker</h1>
       <p>Active wildfire detections</p>
+
+      <div className="controls">
+        <label htmlFor="days">Observation window</label>
+        <select
+          id="days"
+          value={days}
+          onChange={(event) => {
+            setLoading(true);
+            setError("");
+            setDays(event.target.value);
+          }}
+        >
+          <option value="1">24 hours</option>
+          <option value="3">3 days</option>
+          <option value="5">5 days</option>
+        </select>
+        <span aria-live="polite">
+          {loading ? "Loading detections…" : `${fires.length} detections`}
+        </span>
+      </div>
+
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
 
       <MapContainer
         center={[40.4, -3.7]}
