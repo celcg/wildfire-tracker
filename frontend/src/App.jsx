@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -34,6 +34,37 @@ function cacheFires(days, data) {
   }
   return cachedAt;
 }
+
+const FireMarkers = memo(function FireMarkers({ fires }) {
+  return fires.map((fire, index) => (
+    <CircleMarker
+      key={`${fire.latitude}-${fire.longitude}-${fire.acq_date}-${fire.acq_time}-${index}`}
+      center={[fire.latitude, fire.longitude]}
+      radius={8}
+      pathOptions={{
+        color: "#ffb197",
+        fillColor: "#ff6248",
+        fillOpacity: 0.78,
+        opacity: 0.9,
+        weight: 1.5,
+      }}
+    >
+      <Popup>
+        <strong>Thermal detection</strong>
+        <br />
+        Date: {fire.acq_date}
+        <br />
+        Time: {fire.acq_time}
+        <br />
+        Satellite: {fire.satellite}
+        <br />
+        Confidence: {fire.confidence}
+        <br />
+        FRP: {fire.frp} MW
+      </Popup>
+    </CircleMarker>
+  ));
+});
 
 function App() {
   const [initialCache] = useState(() => readCachedFires("1"));
@@ -109,75 +140,120 @@ function App() {
     setRequest({ days, refresh: true, id: Date.now() });
   };
 
-  return (
-    <main>
-      <h1>Wildfire Tracker</h1>
-      <p>Active wildfire detections</p>
+  const updatedTime = lastUpdated
+    ? new Date(lastUpdated).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Awaiting sync";
 
-      <div className="controls">
-        <label htmlFor="days">Observation window</label>
-        <select
-          id="days"
-          value={days}
-          onChange={handleDaysChange}
+  return (
+    <main className="app-shell">
+      <header className="hero">
+        <div className="hero-copy">
+          <p className="mission-label">
+            <span className="live-signal" aria-hidden="true" />
+            Earth observation · Iberian Peninsula
+          </p>
+          <h1>
+            Wildfire <span>Tracker</span>
+          </h1>
+          <p className="hero-description">
+            A near-real-time view of satellite thermal detections, built to
+            make environmental change visible.
+          </p>
+        </div>
+
+        <div className="orbital-scan" aria-hidden="true">
+          <span className="orbit orbit-one" />
+          <span className="orbit orbit-two" />
+          <span className="planet-core" />
+          <span className="satellite-dot" />
+          <span className="coordinate north">43° N</span>
+          <span className="coordinate west">09° W</span>
+        </div>
+      </header>
+
+      <section className="control-deck" aria-label="Map controls">
+        <div className="control-field">
+          <label htmlFor="days">Observation window</label>
+          <select
+            id="days"
+            value={days}
+            onChange={handleDaysChange}
+            disabled={loading}
+          >
+            <option value="1">Last 24 hours</option>
+            <option value="3">Last 3 days</option>
+            <option value="5">Last 5 days</option>
+          </select>
+        </div>
+
+        <button
+          className={`refresh-button${loading ? " is-loading" : ""}`}
+          type="button"
+          onClick={handleRefresh}
           disabled={loading}
         >
-          <option value="1">24 hours</option>
-          <option value="3">3 days</option>
-          <option value="5">5 days</option>
-        </select>
-        <button type="button" onClick={handleRefresh} disabled={loading}>
-          Refresh data
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" />
+          </svg>
+          {loading ? "Synchronising" : "Refresh data"}
         </button>
-        <span aria-live="polite">
-          {loading
-            ? "Loading detections…"
-            : `${fires.length} detections${
-                lastUpdated
-                  ? ` · Updated ${new Date(lastUpdated).toLocaleTimeString()}`
-                  : ""
-              }`}
-        </span>
-      </div>
+
+        <div className="data-readout" aria-live="polite">
+          <span className="readout-value">{loading ? "—" : fires.length}</span>
+          <span className="readout-label">
+            {loading ? "Scanning orbit" : "Active detections"}
+          </span>
+          <span className="readout-time">Last sync · {updatedTime}</span>
+        </div>
+      </section>
 
       {error && (
         <p className="error" role="alert">
+          <span aria-hidden="true">!</span>
           {error}
         </p>
       )}
 
-      <MapContainer
-        center={[40.4, -3.7]}
-        zoom={5}
-        style={{ height: "600px", width: "100%" }}
-      >
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+      <section className="map-section" aria-labelledby="map-title">
+        <div className="map-heading">
+          <div>
+            <p className="section-index">01 / LIVE LAYER</p>
+            <h2 id="map-title">Thermal activity map</h2>
+          </div>
+          <div className="source-badge">
+            <span aria-hidden="true" />
+            NASA FIRMS · VIIRS
+          </div>
+        </div>
 
-        {fires.map((fire, index) => (
-          <CircleMarker
-            key={index}
-            center={[fire.latitude, fire.longitude]}
-            radius={8}
+        <div className="map-frame">
+          <MapContainer
+            className="fire-map"
+            center={[40.4, -3.7]}
+            zoom={5}
+            scrollWheelZoom
           >
-            <Popup>
-              <strong>Fire detection</strong>
-              <br />
-              Date: {fire.acq_date}
-              <br />
-              Time: {fire.acq_time}
-              <br />
-              Satellite: {fire.satellite}
-              <br />
-              Confidence: {fire.confidence}
-              <br />
-              FRP: {fire.frp} MW
-            </Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
+            <TileLayer
+              attribution="&copy; OpenStreetMap contributors"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <FireMarkers fires={fires} />
+          </MapContainer>
+          <div className="map-corner map-corner-top" aria-hidden="true" />
+          <div className="map-corner map-corner-bottom" aria-hidden="true" />
+          <p className="map-legend">
+            <span aria-hidden="true" /> Satellite thermal anomaly
+          </p>
+        </div>
+      </section>
+
+      <footer className="site-footer">
+        <span>Environmental intelligence through open data</span>
+        <span>Data source · NASA FIRMS</span>
+      </footer>
     </main>
   );
 }
