@@ -11,16 +11,54 @@ import "./App.css";
 const API_URL =
   import.meta.env.VITE_API_URL ??
   "https://wildfire-api-440479996053.europe-west1.run.app";
+const CACHE_PREFIX = "wildfire-fires-v1";
+
+function readCachedFires(days) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(`${CACHE_PREFIX}:${days}`));
+    return Array.isArray(cached?.data) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheFires(days, data) {
+  const cachedAt = Date.now();
+  try {
+    localStorage.setItem(
+      `${CACHE_PREFIX}:${days}`,
+      JSON.stringify({ data, cachedAt }),
+    );
+  } catch {
+    // Fresh data remains usable when browser storage is unavailable or full.
+  }
+  return cachedAt;
+}
 
 function App() {
-  const [fires, setFires] = useState([]);
+  const [initialCache] = useState(() => readCachedFires("1"));
+  const [fires, setFires] = useState(initialCache?.data ?? []);
   const [days, setDays] = useState("1");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCache);
   const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(
+    initialCache?.cachedAt ?? null,
+  );
+  const [request, setRequest] = useState(() =>
+    initialCache ? null : { days: "1", refresh: false, id: 0 },
+  );
 
   useEffect(() => {
+    if (!request) {
+      return undefined;
+    }
+
     const controller = new AbortController();
-    fetch(`${API_URL}/fires?days=${days}`, { signal: controller.signal })
+    const refreshParam = request.refresh ? "&refresh=true" : "";
+
+    fetch(`${API_URL}/fires?days=${request.days}${refreshParam}`, {
+      signal: controller.signal,
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error(`API request failed (${response.status})`);
@@ -29,7 +67,9 @@ function App() {
       })
       .then((data) => {
         if (!controller.signal.aborted) {
+          const cachedAt = cacheFires(request.days, data);
           setFires(data);
+          setLastUpdated(cachedAt);
           setLoading(false);
         }
       })
@@ -42,7 +82,32 @@ function App() {
       });
 
     return () => controller.abort();
-  }, [days]);
+  }, [request]);
+
+  const handleDaysChange = (event) => {
+    const nextDays = event.target.value;
+    const cached = readCachedFires(nextDays);
+
+    setDays(nextDays);
+    setError("");
+
+    if (cached) {
+      setRequest(null);
+      setFires(cached.data);
+      setLastUpdated(cached.cachedAt);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setRequest({ days: nextDays, refresh: false, id: Date.now() });
+  };
+
+  const handleRefresh = () => {
+    setError("");
+    setLoading(true);
+    setRequest({ days, refresh: true, id: Date.now() });
+  };
 
   return (
     <main>
@@ -54,18 +119,24 @@ function App() {
         <select
           id="days"
           value={days}
-          onChange={(event) => {
-            setLoading(true);
-            setError("");
-            setDays(event.target.value);
-          }}
+          onChange={handleDaysChange}
+          disabled={loading}
         >
           <option value="1">24 hours</option>
           <option value="3">3 days</option>
           <option value="5">5 days</option>
         </select>
+        <button type="button" onClick={handleRefresh} disabled={loading}>
+          Refresh data
+        </button>
         <span aria-live="polite">
-          {loading ? "Loading detections…" : `${fires.length} detections`}
+          {loading
+            ? "Loading detections…"
+            : `${fires.length} detections${
+                lastUpdated
+                  ? ` · Updated ${new Date(lastUpdated).toLocaleTimeString()}`
+                  : ""
+              }`}
         </span>
       </div>
 

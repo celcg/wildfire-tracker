@@ -20,6 +20,8 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Responsive React interface hosted on Firebase
 - REST API hosted as a containerized service on Google Cloud Run
 - Configurable observation window and aggregate statistics
+- Persistent browser cache with an explicit manual refresh action
+- Fifteen-minute API cache and a conservative 10-request-per-minute limit per client
 
 ## Architecture
 
@@ -38,7 +40,7 @@ FastAPI REST API (Google Cloud Run)
 NASA FIRMS API
 ```
 
-The frontend and API are deployed independently. FastAPI acts as a small backend-for-frontend layer: it protects the NASA API key, defines a stable JSON contract, and keeps external data-processing concerns out of the browser.
+The frontend and API are deployed independently. FastAPI acts as a small backend-for-frontend layer: it protects the NASA API key, defines a stable JSON contract, and keeps external data-processing concerns out of the browser. The browser reuses cached results until the user requests a refresh, while each Cloud Run instance keeps a short-lived shared cache to reduce repeated NASA calls.
 
 ## Tech Stack + Why
 
@@ -82,7 +84,10 @@ GET /
 GET /fires?days=1
 GET /fires?days=3
 GET /fires?days=5
+GET /fires?days=3&refresh=true
 GET /stats?days=1
 ```
 
 Using a `days` query parameter keeps the resource-oriented API extensible and avoids creating separate endpoints for every supported time window.
+
+Setting `refresh=true` explicitly bypasses the API cache. Data endpoints are limited to 10 requests per minute per client and return `429 Too Many Requests` with a `Retry-After` header when that limit is exceeded. The lightweight limiter and server cache are process-local, so a production system that scales to many Cloud Run instances should move both to a shared store such as Redis.

@@ -32,12 +32,22 @@ SAMPLE_FIRES = pd.DataFrame(
 
 
 class FireEndpointsTest(unittest.TestCase):
+    def setUp(self):
+        main.fire_cache.clear()
+        main.request_history.clear()
+
     @patch("main.fetch_fires", return_value=SAMPLE_FIRES)
     def test_fires_passes_days_to_data_source(self, fetch_fires):
         response = main.fires(days=3)
 
-        fetch_fires.assert_called_once_with(3)
+        fetch_fires.assert_called_once_with(3, force_refresh=False)
         self.assertEqual(len(response), 2)
+
+    @patch("main.fetch_fires", return_value=SAMPLE_FIRES)
+    def test_manual_refresh_bypasses_server_cache(self, fetch_fires):
+        main.fires(days=3, refresh=True)
+
+        fetch_fires.assert_called_once_with(3, force_refresh=True)
 
     @patch("main.fetch_fires", return_value=SAMPLE_FIRES)
     def test_stats_aggregates_fire_data(self, fetch_fires):
@@ -68,6 +78,39 @@ class FireEndpointsTest(unittest.TestCase):
 
         self.assertEqual(raised.exception.status_code, 502)
         self.assertNotIn("test-secret", raised.exception.detail)
+
+    def test_server_cache_avoids_repeated_nasa_requests(self):
+        with patch.object(main, "NASA_KEY", "test-key"):
+            with patch("main.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
+                first = main.fetch_fires(days=1)
+                second = main.fetch_fires(days=1)
+
+        read_csv.assert_called_once()
+        self.assertEqual(len(first), len(second))
+
+    def test_rate_limit_rejects_the_eleventh_request(self):
+        request = main.Request(
+            {
+                "type": "http",
+                "client": ("192.0.2.1", 1234),
+                "headers": [],
+                "method": "GET",
+                "path": "/fires",
+                "query_string": b"",
+                "scheme": "http",
+                "server": ("testserver", 80),
+                "http_version": "1.1",
+            }
+        )
+
+        for _ in range(main.RATE_LIMIT_REQUESTS):
+            main.enforce_rate_limit(request)
+
+        with self.assertRaises(HTTPException) as raised:
+            main.enforce_rate_limit(request)
+
+        self.assertEqual(raised.exception.status_code, 429)
+        self.assertIn("Retry-After", raised.exception.headers)
 
 
 if __name__ == "__main__":
