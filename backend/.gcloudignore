@@ -1,0 +1,7 @@
+.gcloudignore
+.env
+.env.*
+.venv/
+__pycache__/
+*.py[cod]
+test_*.py
