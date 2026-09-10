@@ -19,9 +19,9 @@ app.add_middleware(
         "https://project-d66d4e5f-ee28-4c77-845.web.app",
         "https://project-d66d4e5f-ee28-4c77-845.firebaseapp.com",
     ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=["Accept", "Content-Type"],
 )
 
 NASA_KEY = os.getenv("NASA_KEY")

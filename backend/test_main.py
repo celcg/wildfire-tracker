@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 import pandas as pd
+from fastapi import HTTPException
 
 import main
 
@@ -58,6 +59,15 @@ class FireEndpointsTest(unittest.TestCase):
 
         self.assertEqual(response["average_frp"], 0)
         self.assertEqual(response["maximum_frp"], 0)
+
+    @patch("main.pd.read_csv", side_effect=RuntimeError("upstream failure"))
+    def test_upstream_errors_do_not_expose_nasa_key(self, _read_csv):
+        with patch.object(main, "NASA_KEY", "test-secret-that-must-not-leak"):
+            with self.assertRaises(HTTPException) as raised:
+                main.fetch_fires(days=1)
+
+        self.assertEqual(raised.exception.status_code, 502)
+        self.assertNotIn("test-secret", raised.exception.detail)
 
 
 if __name__ == "__main__":
