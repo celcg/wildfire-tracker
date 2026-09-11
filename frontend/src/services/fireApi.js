@@ -29,3 +29,27 @@ export async function fetchFires({ days, forceRefresh, signal }) {
 
   return data;
 }
+
+export async function fetchIncidents({ days, forceRefresh, signal }) {
+  const searchParams = new URLSearchParams({ days });
+
+  if (forceRefresh) {
+    searchParams.set("refresh", "true");
+  }
+
+  const response = await fetch(
+    API_URL + "/incidents?" + searchParams.toString(),
+    { signal },
+  );
+
+  if (!response.ok) {
+    throw new Error("Incident API request failed (" + response.status + ")");
+  }
+
+  const data = await response.json();
+  if (!data || !Array.isArray(data.incidents)) {
+    throw new TypeError("The incident API returned an invalid response");
+  }
+
+  return data;
+}

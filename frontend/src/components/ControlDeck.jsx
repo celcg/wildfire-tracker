@@ -1,13 +1,16 @@
-import { OBSERVATION_WINDOWS } from "../config/fireConfig";
+import { MAP_LAYERS, OBSERVATION_WINDOWS } from "../config/fireConfig";
 import { formatSyncTime } from "../domain/firePresentation";
 
 export function ControlDeck({
   days,
-  detectionCount,
+  activeCount,
   lastUpdated,
+  layer,
   loading,
   onDaysChange,
+  onLayerChange,
   onRefresh,
+  readoutLabel,
 }) {
   const handleDaysChange = (event) => onDaysChange(event.target.value);
 
@@ -29,6 +32,21 @@ export function ControlDeck({
         </select>
       </div>
 
+      <div className="layer-switch" aria-label="Map layer">
+        {MAP_LAYERS.map((option) => (
+          <button
+            type="button"
+            className={layer === option.id ? "is-active" : ""}
+            aria-pressed={layer === option.id}
+            disabled={loading}
+            onClick={() => onLayerChange(option.id)}
+            key={option.id}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       <button
         className={"refresh-button" + (loading ? " is-loading" : "")}
         type="button"
@@ -43,9 +61,9 @@ export function ControlDeck({
       </button>
 
       <div className="data-readout" aria-live="polite">
-        <span className="readout-value">{loading ? "—" : detectionCount}</span>
+        <span className="readout-value">{loading ? "—" : activeCount}</span>
         <span className="readout-label">
-          {loading ? "Scanning orbit" : "Active detections"}
+          {loading ? "Scanning orbit" : readoutLabel}
         </span>
         <span className="readout-time">
           Last sync · {formatSyncTime(lastUpdated)}

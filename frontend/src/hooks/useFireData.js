@@ -17,7 +17,6 @@ export function useFireData() {
     readCachedFires(DEFAULT_OBSERVATION_DAYS),
   );
   const [fires, setFires] = useState(initialCache?.data ?? []);
-  const [days, setDays] = useState(DEFAULT_OBSERVATION_DAYS);
   const [loading, setLoading] = useState(!initialCache);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(
@@ -90,25 +89,11 @@ export function useFireData() {
     };
   }, [initialCache, loadFires]);
 
-  const selectDays = useCallback(
-    (nextDays) => {
-      setDays(nextDays);
-      loadFires(nextDays);
-    },
-    [loadFires],
-  );
-
-  const refresh = useCallback(() => {
-    loadFires(days, true);
-  }, [days, loadFires]);
-
   return {
-    days,
     error,
     fires,
     lastUpdated,
+    loadFires,
     loading,
-    refresh,
-    selectDays,
   };
 }

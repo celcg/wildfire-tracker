@@ -2,7 +2,7 @@
  * Native details/summary provides keyboard and screen-reader behavior without
  * duplicating disclosure state in React.
  */
-export function DataGuide() {
+export function DataGuide({ showClusters }) {
   return (
     <details className="data-guide">
       <summary>
@@ -10,6 +10,16 @@ export function DataGuide() {
         <i aria-hidden="true" />
       </summary>
       <div className="guide-content">
+        {showClusters ? (
+          <div>
+            <h3>Possible clusters</h3>
+            <p>
+              Detections within 15 km and 12 hours are connected into one
+              possible fire area. Isolated detections remain visible as
+              single-observation areas.
+            </p>
+          </div>
+        ) : null}
         <div>
           <h3>FRP</h3>
           <p>
@@ -34,8 +44,9 @@ export function DataGuide() {
           </p>
         </div>
         <p className="guide-note">
-          This scale describes satellite-measured thermal intensity. It is not
-          an official emergency or wildfire severity classification.
+          {showClusters
+            ? "Clusters and trends are analytical indicators, not confirmed incidents or forecasts."
+            : "This scale describes satellite-measured thermal intensity. It is not an official emergency or wildfire severity classification."}
         </p>
       </div>
     </details>

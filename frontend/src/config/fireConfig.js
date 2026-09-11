@@ -8,6 +8,12 @@ export const DEFAULT_OBSERVATION_DAYS = "1";
 // The namespace is versioned deliberately. A future cache schema can be released
 // without trying to migrate incompatible values already stored in user browsers.
 export const FIRE_CACHE_NAMESPACE = "wildfire-fires-v1";
+export const INCIDENT_CACHE_NAMESPACE = "wildfire-incidents-v1";
+
+export const MAP_LAYERS = [
+  { id: "detections", label: "Detections" },
+  { id: "clusters", label: "Possible clusters" },
+];
 
 export const OBSERVATION_WINDOWS = [
   { days: "1", label: "Last 24 hours" },
@@ -22,6 +28,14 @@ export const INTENSITY_LEVELS = [
   { name: "Moderate", max: 15, color: "#f2c94c", radius: 7 },
   { name: "High", max: 50, color: "#ff8a4c", radius: 10 },
   { name: "Extreme", max: Infinity, color: "#ff3d5a", radius: 14 },
+];
+
+// Cluster colors describe aggregate FRP and deliberately use wider thresholds.
+export const INCIDENT_SEVERITY_LEVELS = [
+  { name: "Low", max: 10, color: "#71f6b5" },
+  { name: "Moderate", max: 50, color: "#f2c94c" },
+  { name: "High", max: 150, color: "#ff8a4c" },
+  { name: "Extreme", max: Infinity, color: "#ff3d5a" },
 ];
 
 export const MAP_CONFIG = {
