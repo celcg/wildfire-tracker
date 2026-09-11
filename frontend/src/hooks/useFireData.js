@@ -17,7 +17,6 @@ export function useFireData() {
     readCachedFires(DEFAULT_OBSERVATION_DAYS),
   );
   const [fires, setFires] = useState(initialCache?.data ?? []);
-  const [days, setDays] = useState(DEFAULT_OBSERVATION_DAYS);
   const [loading, setLoading] = useState(!initialCache);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(
@@ -38,7 +37,7 @@ export function useFireData() {
         setLastUpdated(cached.cachedAt);
         setLoading(false);
         setError("");
-        return;
+        return cached.data;
       }
     }
 
@@ -58,12 +57,14 @@ export function useFireData() {
         const cachedAt = writeCachedFires(targetDays, data);
         setFires(data);
         setLastUpdated(cachedAt);
+        return data;
       }
     } catch (requestError) {
       if (requestError.name !== "AbortError") {
         setError(LOAD_ERROR_MESSAGE);
         console.error("Fire data request failed:", requestError);
       }
+      return null;
     } finally {
       // A superseded request must not clear its successor's loading indicator.
       if (activeRequest.current === controller) {
@@ -71,6 +72,19 @@ export function useFireData() {
         setLoading(false);
       }
     }
+  }, []);
+
+  const replaceFires = useCallback((targetDays, data) => {
+    // A cluster refresh carries the same source detections, so reuse that
+    // response instead of spending a second API and NASA request.
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+
+    const cachedAt = writeCachedFires(targetDays, data);
+    setFires(data);
+    setLastUpdated(cachedAt);
+    setLoading(false);
+    setError("");
   }, []);
 
   useEffect(() => {
@@ -90,25 +104,12 @@ export function useFireData() {
     };
   }, [initialCache, loadFires]);
 
-  const selectDays = useCallback(
-    (nextDays) => {
-      setDays(nextDays);
-      loadFires(nextDays);
-    },
-    [loadFires],
-  );
-
-  const refresh = useCallback(() => {
-    loadFires(days, true);
-  }, [days, loadFires]);
-
   return {
-    days,
     error,
     fires,
     lastUpdated,
+    loadFires,
     loading,
-    refresh,
-    selectDays,
+    replaceFires,
   };
 }

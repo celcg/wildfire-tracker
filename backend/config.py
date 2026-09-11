@@ -33,3 +33,12 @@ FIRE_COLUMNS = [
 CACHE_TTL_SECONDS = 15 * 60
 RATE_LIMIT_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
+
+# Clusters link detections only when they are close in both space and time.
+# Keeping these server-owned avoids presenting arbitrary tuning as user choice.
+CLUSTER_RADIUS_KM = 3
+CLUSTER_TIME_WINDOW_HOURS = 12
+
+# A small context margin turns one- and two-point groups into visible areas.
+# It is a visualization envelope, not an estimated burned-area perimeter.
+CLUSTER_ENVELOPE_BUFFER_KM = 1
