@@ -99,7 +99,7 @@ Setting `refresh=true` explicitly bypasses the API cache. Data endpoints are lim
 ## Intelligent Fire Clustering
 
 The optional cluster layer turns nearby satellite observations into possible
-fire areas. Two detections are connected when they occur within **3 km** and
+fire areas. Two detections are connected when they occur within **2 km** and
 **12 hours** of one another; transitive connections form one component. The
 implementation uses the Haversine distance and a Union-Find data structure, so
 the method remains lightweight and explainable without adding a machine-learning

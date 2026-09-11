@@ -36,7 +36,7 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 
 # Clusters link detections only when they are close in both space and time.
 # Keeping these server-owned avoids presenting arbitrary tuning as user choice.
-CLUSTER_RADIUS_KM = 3
+CLUSTER_RADIUS_KM = 2
 CLUSTER_TIME_WINDOW_HOURS = 12
 
 # A small context margin turns one- and two-point groups into visible areas.
