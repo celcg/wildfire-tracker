@@ -14,7 +14,7 @@ export function DataGuide({ showClusters }) {
           <div>
             <h3>Possible clusters</h3>
             <p>
-              Detections within 5 km and 12 hours are connected into one
+              Detections within 3 km and 12 hours are connected into one
               possible fire area. Every original point remains visible. The
               shaded envelope joins related observations and adds a 1 km
               context margin so isolated observations also remain legible.

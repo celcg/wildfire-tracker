@@ -37,7 +37,7 @@ class IncidentClusteringTest(unittest.TestCase):
         fires = pd.DataFrame(
             [
                 fire(42.100, -8.600, "2026-09-10", 900, 8),
-                fire(42.140, -8.590, "2026-09-10", 1100, 12, "h"),
+                fire(42.125, -8.590, "2026-09-10", 1100, 12, "h"),
             ]
         )
 
@@ -76,8 +76,8 @@ class IncidentClusteringTest(unittest.TestCase):
         fires = pd.DataFrame(
             [
                 fire(42.00, -8.60, "2026-09-10", 900, 5),
-                fire(42.04, -8.60, "2026-09-10", 1000, 5),
-                fire(42.08, -8.60, "2026-09-10", 1100, 5),
+                fire(42.025, -8.60, "2026-09-10", 1000, 5),
+                fire(42.050, -8.60, "2026-09-10", 1100, 5),
             ]
         )
 
@@ -86,11 +86,11 @@ class IncidentClusteringTest(unittest.TestCase):
         self.assertEqual(result.incident_count, 1)
         self.assertEqual(result.incidents[0].detection_count, 3)
 
-    def test_detections_more_than_five_kilometres_apart_remain_separate(self):
+    def test_detections_more_than_three_kilometres_apart_remain_separate(self):
         fires = pd.DataFrame(
             [
                 fire(42.000, -8.600, "2026-09-10", 900, 5),
-                fire(42.055, -8.600, "2026-09-10", 930, 5),
+                fire(42.030, -8.600, "2026-09-10", 930, 5),
             ]
         )
 
