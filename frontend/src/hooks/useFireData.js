@@ -37,7 +37,7 @@ export function useFireData() {
         setLastUpdated(cached.cachedAt);
         setLoading(false);
         setError("");
-        return;
+        return cached.data;
       }
     }
 
@@ -57,12 +57,14 @@ export function useFireData() {
         const cachedAt = writeCachedFires(targetDays, data);
         setFires(data);
         setLastUpdated(cachedAt);
+        return data;
       }
     } catch (requestError) {
       if (requestError.name !== "AbortError") {
         setError(LOAD_ERROR_MESSAGE);
         console.error("Fire data request failed:", requestError);
       }
+      return null;
     } finally {
       // A superseded request must not clear its successor's loading indicator.
       if (activeRequest.current === controller) {
@@ -70,6 +72,19 @@ export function useFireData() {
         setLoading(false);
       }
     }
+  }, []);
+
+  const replaceFires = useCallback((targetDays, data) => {
+    // A cluster refresh carries the same source detections, so reuse that
+    // response instead of spending a second API and NASA request.
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+
+    const cachedAt = writeCachedFires(targetDays, data);
+    setFires(data);
+    setLastUpdated(cachedAt);
+    setLoading(false);
+    setError("");
   }, []);
 
   useEffect(() => {
@@ -95,5 +110,6 @@ export function useFireData() {
     lastUpdated,
     loadFires,
     loading,
+    replaceFires,
   };
 }

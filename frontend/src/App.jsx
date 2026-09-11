@@ -16,6 +16,8 @@ function App() {
   useScrollReveal();
   const [days, setDays] = useState(DEFAULT_OBSERVATION_DAYS);
   const [layer, setLayer] = useState("detections");
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
 
   // App composes feature sections; networking and browser APIs stay in hooks.
   const fireData = useFireData();
@@ -25,15 +27,17 @@ function App() {
   const activeCount = showClusters
     ? (activeCollection?.incident_count ?? 0)
     : fireData.fires.length;
-  const activeError = showClusters ? incidentData.error : fireData.error;
-  const activeLoading = showClusters
-    ? incidentData.loading
-    : fireData.loading;
+  const activeError =
+    refreshError || (showClusters ? incidentData.error : fireData.error);
+  const activeLoading =
+    refreshingAll ||
+    (showClusters ? incidentData.loading : fireData.loading);
   const activeLastUpdated = showClusters
     ? incidentData.lastUpdated
     : fireData.lastUpdated;
 
   const handleDaysChange = (nextDays) => {
+    setRefreshError("");
     setDays(nextDays);
 
     if (showClusters) {
@@ -44,6 +48,7 @@ function App() {
   };
 
   const handleLayerChange = (nextLayer) => {
+    setRefreshError("");
     setLayer(nextLayer);
 
     if (nextLayer === "clusters") {
@@ -53,12 +58,24 @@ function App() {
     }
   };
 
-  const handleRefresh = () => {
-    if (showClusters) {
-      incidentData.loadIncidents(days, true);
+  const handleRefresh = async () => {
+    setRefreshingAll(true);
+    setRefreshError("");
+
+    const refreshedCollection = await incidentData.loadIncidents(days, true);
+
+    if (refreshedCollection) {
+      const refreshedDetections = refreshedCollection.incidents.flatMap(
+        (incident) => incident.detections,
+      );
+      fireData.replaceFires(days, refreshedDetections);
     } else {
-      fireData.loadFires(days, true);
+      setRefreshError(
+        "Points and clusters could not be refreshed. Please try again.",
+      );
     }
+
+    setRefreshingAll(false);
   };
 
   return (

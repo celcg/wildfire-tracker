@@ -36,7 +36,7 @@ export function useIncidentData() {
           setLastUpdated(cached.cachedAt);
           setLoading(false);
           setError("");
-          return;
+          return cached.data;
         }
       }
 
@@ -61,12 +61,14 @@ export function useIncidentData() {
           setCollection(data);
           loadedDays.current = targetDays;
           setLastUpdated(cachedAt);
+          return data;
         }
       } catch (requestError) {
         if (requestError.name !== "AbortError") {
           setError(LOAD_ERROR_MESSAGE);
           console.error("Incident data request failed:", requestError);
         }
+        return null;
       } finally {
         if (activeRequest.current === controller) {
           activeRequest.current = null;
