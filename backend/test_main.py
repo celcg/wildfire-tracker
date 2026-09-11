@@ -2,9 +2,12 @@ import unittest
 from unittest.mock import patch
 
 import pandas as pd
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 import main
+import config
+import fire_data
+from rate_limit import rate_limiter
 
 
 SAMPLE_FIRES = pd.DataFrame(
@@ -33,8 +36,9 @@ SAMPLE_FIRES = pd.DataFrame(
 
 class FireEndpointsTest(unittest.TestCase):
     def setUp(self):
-        main.fire_cache.clear()
-        main.request_history.clear()
+        # Reset process-local adapters so every test starts from a clean boundary.
+        fire_data.clear_fire_cache()
+        rate_limiter.reset()
 
     @patch("main.fetch_fires", return_value=SAMPLE_FIRES)
     def test_fires_passes_days_to_data_source(self, fetch_fires):
@@ -70,26 +74,26 @@ class FireEndpointsTest(unittest.TestCase):
         self.assertEqual(response["average_frp"], 0)
         self.assertEqual(response["maximum_frp"], 0)
 
-    @patch("main.pd.read_csv", side_effect=RuntimeError("upstream failure"))
+    @patch("fire_data.pd.read_csv", side_effect=RuntimeError("upstream failure"))
     def test_upstream_errors_do_not_expose_nasa_key(self, _read_csv):
-        with patch.object(main, "NASA_KEY", "test-secret-that-must-not-leak"):
+        with patch.object(config, "NASA_KEY", "test-secret-that-must-not-leak"):
             with self.assertRaises(HTTPException) as raised:
-                main.fetch_fires(days=1)
+                fire_data.fetch_fires(days=1)
 
         self.assertEqual(raised.exception.status_code, 502)
         self.assertNotIn("test-secret", raised.exception.detail)
 
     def test_server_cache_avoids_repeated_nasa_requests(self):
-        with patch.object(main, "NASA_KEY", "test-key"):
-            with patch("main.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
-                first = main.fetch_fires(days=1)
-                second = main.fetch_fires(days=1)
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch("fire_data.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
+                first = fire_data.fetch_fires(days=1)
+                second = fire_data.fetch_fires(days=1)
 
         read_csv.assert_called_once()
         self.assertEqual(len(first), len(second))
 
     def test_rate_limit_rejects_the_eleventh_request(self):
-        request = main.Request(
+        request = Request(
             {
                 "type": "http",
                 "client": ("192.0.2.1", 1234),
@@ -103,7 +107,7 @@ class FireEndpointsTest(unittest.TestCase):
             }
         )
 
-        for _ in range(main.RATE_LIMIT_REQUESTS):
+        for _ in range(config.RATE_LIMIT_REQUESTS):
             main.enforce_rate_limit(request)
 
         with self.assertRaises(HTTPException) as raised:

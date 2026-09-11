@@ -1,9 +1,13 @@
+/* Page shell ---------------------------------------------------------------
+   A single capped column keeps controls aligned with the geospatial surface. */
 .app-shell {
   width: min(1240px, calc(100% - 48px));
   margin: 0 auto;
   padding: 34px 0 28px;
 }
 
+/* Mission header -----------------------------------------------------------
+   The orbital graphic is decorative; the copy remains the semantic hero. */
 .hero {
   position: relative;
   display: grid;
@@ -194,6 +198,8 @@ h1 span {
 .coordinate.north { top: 13px; left: 50%; transform: translateX(-50%); }
 .coordinate.west { top: 50%; left: 13px; transform: translateY(-50%) rotate(-90deg); }
 
+/* Data controls ------------------------------------------------------------
+   Related inputs share one instrument-like strip instead of separate cards. */
 .control-deck {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto minmax(260px, 1fr);
@@ -301,6 +307,8 @@ h1 span {
 .readout-label { align-self: end; color: var(--mist-100); font-size: 0.65rem; }
 .readout-time { align-self: start; margin-top: 3px; color: var(--mist-300); font-size: 0.57rem; }
 
+/* Request feedback ---------------------------------------------------------
+   The colored edge remains distinguishable without relying on color alone. */
 .error {
   display: flex;
   gap: 12px;
@@ -324,6 +332,8 @@ h1 span {
   font-size: 0.72rem;
 }
 
+/* Map workspace ------------------------------------------------------------
+   Reveal motion is class-driven to avoid coupling animation to React state. */
 .map-heading {
   display: flex;
   align-items: end;
@@ -457,6 +467,8 @@ h2 {
   text-transform: uppercase;
 }
 
+/* Detection popup ----------------------------------------------------------
+   A definition list pairs technical labels with their reported values. */
 .detection-data {
   min-width: 205px;
   margin: 11px 0 2px;
@@ -496,6 +508,8 @@ h2 {
 .map-corner-top { top: 3px; left: 3px; border-top: 2px solid; border-left: 2px solid; }
 .map-corner-bottom { right: 3px; bottom: 3px; border-right: 2px solid; border-bottom: 2px solid; }
 
+/* FRP legend ---------------------------------------------------------------
+   Marker tokens reuse the exact domain configuration used by Leaflet. */
 .intensity-key {
   display: grid;
   grid-template-columns: auto repeat(4, minmax(120px, 1fr));
@@ -556,6 +570,8 @@ h2 {
   font-size: 0.65rem;
 }
 
+/* Data glossary ------------------------------------------------------------
+   Native details/summary provides disclosure behavior with no JavaScript. */
 .data-guide {
   margin-top: 12px;
   border-top: 1px solid var(--line-strong);
@@ -648,6 +664,8 @@ h2 {
   font-size: 0.72rem;
 }
 
+/* Provenance ---------------------------------------------------------------
+   Data attribution stays visible without competing with the live map. */
 .site-footer {
   display: flex;
   justify-content: space-between;
@@ -658,6 +676,8 @@ h2 {
   font-size: 0.56rem;
 }
 
+/* Motion -------------------------------------------------------------------
+   Each sequence runs once and is disabled by the reduced-motion query below. */
 @keyframes rotate { to { transform: rotate(360deg); } }
 
 @keyframes orbit-sweep {
@@ -688,6 +708,8 @@ h2 {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Responsive layout --------------------------------------------------------
+   The two breakpoints reflect structural changes, not individual devices. */
 @media (max-width: 860px) {
   .app-shell { width: min(100% - 28px, 1240px); padding-top: 22px; }
   .hero { grid-template-columns: 1fr 210px; min-height: 270px; }
