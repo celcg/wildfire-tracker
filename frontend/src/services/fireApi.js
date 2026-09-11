@@ -47,7 +47,15 @@ export async function fetchIncidents({ days, forceRefresh, signal }) {
   }
 
   const data = await response.json();
-  if (!data || !Array.isArray(data.incidents)) {
+  const hasValidAreas = data?.incidents?.every(
+    (incident) =>
+      Array.isArray(incident.boundary) &&
+      incident.boundary.length >= 3 &&
+      Array.isArray(incident.detections) &&
+      incident.detections.length >= 1,
+  );
+
+  if (!Array.isArray(data?.incidents) || !hasValidAreas) {
     throw new TypeError("The incident API returned an invalid response");
   }
 

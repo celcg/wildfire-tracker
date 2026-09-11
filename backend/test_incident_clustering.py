@@ -37,7 +37,7 @@ class IncidentClusteringTest(unittest.TestCase):
         fires = pd.DataFrame(
             [
                 fire(42.100, -8.600, "2026-09-10", 900, 8),
-                fire(42.145, -8.590, "2026-09-10", 1100, 12, "h"),
+                fire(42.140, -8.590, "2026-09-10", 1100, 12, "h"),
             ]
         )
 
@@ -76,8 +76,8 @@ class IncidentClusteringTest(unittest.TestCase):
         fires = pd.DataFrame(
             [
                 fire(42.00, -8.60, "2026-09-10", 900, 5),
-                fire(42.10, -8.60, "2026-09-10", 1000, 5),
-                fire(42.20, -8.60, "2026-09-10", 1100, 5),
+                fire(42.04, -8.60, "2026-09-10", 1000, 5),
+                fire(42.08, -8.60, "2026-09-10", 1100, 5),
             ]
         )
 
@@ -85,6 +85,45 @@ class IncidentClusteringTest(unittest.TestCase):
 
         self.assertEqual(result.incident_count, 1)
         self.assertEqual(result.incidents[0].detection_count, 3)
+
+    def test_detections_more_than_five_kilometres_apart_remain_separate(self):
+        fires = pd.DataFrame(
+            [
+                fire(42.000, -8.600, "2026-09-10", 900, 5),
+                fire(42.055, -8.600, "2026-09-10", 930, 5),
+            ]
+        )
+
+        result = cluster_fires(fires, days=1)
+
+        self.assertEqual(result.incident_count, 2)
+
+    def test_response_preserves_original_valid_detections(self):
+        fires = pd.DataFrame(
+            [
+                fire(42.100, -8.600, "2026-09-10", 900, 8),
+                fire(42.110, -8.590, "2026-09-10", 930, 12, "h"),
+            ]
+        )
+
+        result = cluster_fires(fires, days=1)
+
+        detections = result.incidents[0].detections
+        self.assertEqual(len(detections), 2)
+        self.assertEqual(detections[1].confidence, "h")
+        self.assertEqual(detections[0].acq_time, "0900")
+
+    def test_every_incident_has_a_real_observation_envelope(self):
+        fires = pd.DataFrame(
+            [fire(42.100, -8.600, "2026-09-10", 900, 8)]
+        )
+
+        incident = cluster_fires(fires, days=1).incidents[0]
+
+        self.assertGreaterEqual(len(incident.boundary), 8)
+        self.assertTrue(
+            any(point.latitude != 42.100 for point in incident.boundary)
+        )
 
     def test_incident_id_does_not_depend_on_input_order(self):
         rows = [

@@ -2,7 +2,17 @@ import { INCIDENT_CACHE_NAMESPACE } from "../config/fireConfig";
 import { readCachedValue, writeCachedValue } from "./cacheStorage";
 
 function isIncidentCollection(data) {
-  return Boolean(data && Array.isArray(data.incidents));
+  return Boolean(
+    data &&
+      Array.isArray(data.incidents) &&
+      data.incidents.every(
+        (incident) =>
+          Array.isArray(incident.boundary) &&
+          incident.boundary.length >= 3 &&
+          Array.isArray(incident.detections) &&
+          incident.detections.length >= 1,
+      ),
+  );
 }
 
 export function readCachedIncidents(days) {

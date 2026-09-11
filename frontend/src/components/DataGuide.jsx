@@ -14,9 +14,10 @@ export function DataGuide({ showClusters }) {
           <div>
             <h3>Possible clusters</h3>
             <p>
-              Detections within 15 km and 12 hours are connected into one
-              possible fire area. Isolated detections remain visible as
-              single-observation areas.
+              Detections within 5 km and 12 hours are connected into one
+              possible fire area. Every original point remains visible. The
+              shaded envelope joins related observations and adds a 1 km
+              context margin so isolated observations also remain legible.
             </p>
           </div>
         ) : null}
@@ -45,7 +46,7 @@ export function DataGuide({ showClusters }) {
         </div>
         <p className="guide-note">
           {showClusters
-            ? "Clusters and trends are analytical indicators, not confirmed incidents or forecasts."
+            ? "Shaded envelopes, clusters, and trends are analytical indicators—not measured burned perimeters, confirmed incidents, or forecasts."
             : "This scale describes satellite-measured thermal intensity. It is not an official emergency or wildfire severity classification."}
         </p>
       </div>

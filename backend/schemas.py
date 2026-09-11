@@ -11,9 +11,21 @@ class GeoPoint(BaseModel):
     longitude: float
 
 
+class FireDetection(BaseModel):
+    latitude: float
+    longitude: float
+    confidence: str
+    acq_date: str
+    acq_time: str
+    satellite: str
+    frp: float = Field(ge=0)
+
+
 class FireIncident(BaseModel):
     id: str
     center: GeoPoint
+    boundary: list[GeoPoint] = Field(min_length=3)
+    detections: list[FireDetection] = Field(min_length=1)
     detection_count: int = Field(ge=1)
     total_frp_mw: float = Field(ge=0)
     maximum_frp_mw: float = Field(ge=0)

@@ -18,8 +18,9 @@ export function IncidentSummary({ collection }) {
   return (
     <section className="incident-summary" aria-label="Cluster overview">
       <p>
-        Nearby observations are condensed into possible fire areas. They are
-        analytical groups, not confirmed incidents.
+        Nearby observations are linked by possible affected-area envelopes;
+        every source detection remains visible. These are analytical groups,
+        not measured burned perimeters or confirmed incidents.
       </p>
       <dl>
         <div>

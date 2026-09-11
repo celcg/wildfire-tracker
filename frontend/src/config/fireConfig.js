@@ -8,7 +8,7 @@ export const DEFAULT_OBSERVATION_DAYS = "1";
 // The namespace is versioned deliberately. A future cache schema can be released
 // without trying to migrate incompatible values already stored in user browsers.
 export const FIRE_CACHE_NAMESPACE = "wildfire-fires-v1";
-export const INCIDENT_CACHE_NAMESPACE = "wildfire-incidents-v1";
+export const INCIDENT_CACHE_NAMESPACE = "wildfire-incidents-v2";
 
 export const MAP_LAYERS = [
   { id: "detections", label: "Detections" },

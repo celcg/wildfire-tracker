@@ -99,7 +99,7 @@ Setting `refresh=true` explicitly bypasses the API cache. Data endpoints are lim
 ## Intelligent Fire Clustering
 
 The optional cluster layer turns nearby satellite observations into possible
-fire areas. Two detections are connected when they occur within **15 km** and
+fire areas. Two detections are connected when they occur within **5 km** and
 **12 hours** of one another; transitive connections form one component. The
 implementation uses the Haversine distance and a Union-Find data structure, so
 the method remains lightweight and explainable without adding a machine-learning
@@ -109,6 +109,12 @@ Each possible cluster reports its geographic center, detection count, aggregate
 and peak FRP, observation span, dominant confidence category, and a simple FRP
 trend. Stable identifiers are derived from source observations, allowing clients
 to track the same group when response ordering changes.
+
+The cluster response also includes the exact source detections used by each
+group and a convex observation envelope with a 1 km context buffer. The frontend
+draws that translucent envelope behind the original FRP-sized points, so no
+synthetic centroid replaces or obscures the underlying observations. The
+envelope is an explainable visualization aid, not a measured burned perimeter.
 
 Clusters, severity colors, and trends are analytical aids. They are **not
 confirmed wildfire incidents, emergency classifications, or forecasts**.

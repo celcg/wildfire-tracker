@@ -590,11 +590,24 @@ h2 {
   display: none;
 }
 
+.fire-map .possible-area {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .incident-id {
   margin: 4px 0 0;
   color: var(--mist-300);
   font-family: var(--font-mono);
   font-size: 0.58rem;
+}
+
+.incident-note {
+  max-width: 240px;
+  margin: 10px 0 0;
+  color: var(--mist-300);
+  font-size: 0.68rem;
+  line-height: 1.45;
 }
 
 /* Detection popup ----------------------------------------------------------

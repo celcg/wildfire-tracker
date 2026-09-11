@@ -1,7 +1,8 @@
-import { Fragment, memo } from "react";
+import { memo, useMemo } from "react";
 import {
   CircleMarker,
   MapContainer,
+  Polygon,
   Popup,
   TileLayer,
   Tooltip,
@@ -24,7 +25,6 @@ import {
   formatIncidentRange,
   formatObservedAt,
   formatTrend,
-  getIncidentRadius,
   getIncidentSeverity,
 } from "../domain/incidentPresentation";
 import { DataGuide } from "./DataGuide";
@@ -80,46 +80,35 @@ const FireMarkers = memo(function FireMarkers({ fires }) {
   });
 });
 
-const IncidentMarkers = memo(function IncidentMarkers({ incidents }) {
-  return incidents.map((incident) => {
-    const severity = getIncidentSeverity(incident.total_frp_mw);
-    const radius = getIncidentRadius(incident.detection_count);
-    const center = [
-      incident.center.latitude,
-      incident.center.longitude,
-    ];
+const IncidentAreas = memo(function IncidentAreas({ incidents }) {
+  return incidents
+    .filter(
+      (incident) =>
+        Array.isArray(incident.boundary) && incident.boundary.length >= 3,
+    )
+    .map((incident) => {
+      const severity = getIncidentSeverity(incident.total_frp_mw);
+      const boundary = incident.boundary.map((point) => [
+        point.latitude,
+        point.longitude,
+      ]);
 
-    return (
-      <Fragment key={incident.id}>
-        <CircleMarker
-          center={center}
-          radius={radius + 7}
-          interactive={false}
+      return (
+        <Polygon
+          key={incident.id}
+          positions={boundary}
           pathOptions={{
+            className: "possible-area",
             color: severity.color,
+            dashArray: "7 6",
             fillColor: severity.color,
-            fillOpacity: 0.1,
-            opacity: 0.28,
-            weight: 1,
-          }}
-        />
-        <CircleMarker
-          center={center}
-          radius={radius}
-          pathOptions={{
-            color: "#d9f7e8",
-            fillColor: severity.color,
-            fillOpacity: 0.72,
-            opacity: 0.9,
-            weight: 1.25,
+            fillOpacity: 0.12,
+            opacity: 0.78,
+            weight: 1.5,
           }}
         >
           {incident.detection_count > 1 ? (
-            <Tooltip
-              permanent
-              direction="center"
-              className="cluster-count"
-            >
+            <Tooltip permanent direction="center" className="cluster-count">
               {incident.detection_count}
             </Tooltip>
           ) : null}
@@ -160,11 +149,14 @@ const IncidentMarkers = memo(function IncidentMarkers({ incidents }) {
                 <dd>{formatConfidence(incident.confidence)}</dd>
               </div>
             </dl>
+            <p className="incident-note">
+              The shaded envelope is analytical context, not a measured burned
+              perimeter.
+            </p>
           </Popup>
-        </CircleMarker>
-      </Fragment>
-    );
-  });
+        </Polygon>
+      );
+    });
 });
 
 function DetectionLegend() {
@@ -211,6 +203,13 @@ function IncidentLegend() {
 
 export function FireMap({ fires, incidents, layer }) {
   const showClusters = layer === "clusters";
+  const clusteredDetections = useMemo(
+    () =>
+      incidents.flatMap((incident) =>
+        Array.isArray(incident.detections) ? incident.detections : [],
+      ),
+    [incidents],
+  );
 
   return (
     <section className="map-section" aria-labelledby="map-title" data-reveal>
@@ -241,7 +240,10 @@ export function FireMap({ fires, incidents, layer }) {
             url={MAP_CONFIG.tileUrl}
           />
           {showClusters ? (
-            <IncidentMarkers incidents={incidents} />
+            <>
+              <IncidentAreas incidents={incidents} />
+              <FireMarkers fires={clusteredDetections} />
+            </>
           ) : (
             <FireMarkers fires={fires} />
           )}

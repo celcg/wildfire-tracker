@@ -3,12 +3,12 @@
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from hashlib import sha256
-from math import asin, cos, radians, sin, sqrt
+from math import asin, cos, pi, radians, sin, sqrt
 
 import pandas as pd
 
 import config
-from schemas import FireIncident, GeoPoint, IncidentCollection
+from schemas import FireDetection, FireIncident, GeoPoint, IncidentCollection
 
 
 EARTH_RADIUS_KM = 6371.0088
@@ -200,6 +200,78 @@ def _incident_id(cluster: pd.DataFrame) -> str:
     return f"incident-{digest}"
 
 
+def _convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Return the smallest convex ring containing the supplied lon/lat points."""
+    unique_points = sorted(set(points))
+    if len(unique_points) <= 1:
+        return unique_points
+
+    def cross(
+        origin: tuple[float, float],
+        first: tuple[float, float],
+        second: tuple[float, float],
+    ) -> float:
+        return (first[0] - origin[0]) * (second[1] - origin[1]) - (
+            first[1] - origin[1]
+        ) * (second[0] - origin[0])
+
+    lower: list[tuple[float, float]] = []
+    for point in unique_points:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+
+    upper: list[tuple[float, float]] = []
+    for point in reversed(unique_points):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+
+    return lower[:-1] + upper[:-1]
+
+
+def _observation_envelope(cluster: pd.DataFrame) -> list[GeoPoint]:
+    """Buffer detections before taking their hull so every group has an area.
+
+    The buffer is deliberately modest and is only visual context. It must not
+    be interpreted as a remotely sensed or modelled burned-area perimeter.
+    """
+    buffered_points: list[tuple[float, float]] = []
+    radius_km = config.CLUSTER_ENVELOPE_BUFFER_KM
+
+    for row in cluster.itertuples():
+        latitude_scale = radius_km / 111.32
+        longitude_scale = radius_km / (
+            111.32 * max(cos(radians(row.latitude)), 0.01)
+        )
+        for step in range(12):
+            angle = 2 * pi * step / 12
+            buffered_points.append(
+                (
+                    row.longitude + longitude_scale * cos(angle),
+                    row.latitude + latitude_scale * sin(angle),
+                )
+            )
+
+    return [
+        GeoPoint(latitude=round(latitude, 5), longitude=round(longitude, 5))
+        for longitude, latitude in _convex_hull(buffered_points)
+    ]
+
+
+def _build_detection(row: object) -> FireDetection:
+    """Expose the exact observations used by a cluster beside its envelope."""
+    return FireDetection(
+        latitude=float(row.latitude),
+        longitude=float(row.longitude),
+        confidence=str(row.confidence),
+        acq_date=str(row.acq_date),
+        acq_time=str(row.acq_time_text),
+        satellite=str(row.satellite),
+        frp=float(row.frp),
+    )
+
+
 def _build_incident(cluster: pd.DataFrame) -> FireIncident:
     first_seen = cluster["observed_at"].min().to_pydatetime()
     last_seen = cluster["observed_at"].max().to_pydatetime()
@@ -211,6 +283,8 @@ def _build_incident(cluster: pd.DataFrame) -> FireIncident:
             latitude=round(float(cluster["latitude"].mean()), 5),
             longitude=round(float(cluster["longitude"].mean()), 5),
         ),
+        boundary=_observation_envelope(cluster),
+        detections=[_build_detection(row) for row in cluster.itertuples()],
         detection_count=len(cluster),
         total_frp_mw=round(total_frp, 2),
         maximum_frp_mw=round(float(cluster["frp"].max()), 2),
