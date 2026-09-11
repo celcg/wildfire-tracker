@@ -1,129 +1,66 @@
-import os
-from collections import defaultdict, deque
-from threading import Lock
-from time import monotonic
+"""FastAPI composition root for the Wildfire Tracker service."""
+
 from typing import Annotated
 
-import pandas as pd
-
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-
-load_dotenv()
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://project-d66d4e5f-ee28-4c77-845.web.app",
-        "https://project-d66d4e5f-ee28-4c77-845.firebaseapp.com",
-    ],
-    allow_credentials=False,
-    allow_methods=["GET"],
-    allow_headers=["Accept", "Content-Type"],
-)
-
-NASA_KEY = os.getenv("NASA_KEY")
-CACHE_TTL_SECONDS = 15 * 60
-RATE_LIMIT_REQUESTS = 10
-RATE_LIMIT_WINDOW_SECONDS = 60
-FIRE_COLUMNS = [
-    "latitude",
-    "longitude",
-    "confidence",
-    "acq_date",
-    "acq_time",
-    "satellite",
-    "frp",
-]
-fire_cache = {}
-fire_cache_lock = Lock()
-request_history = defaultdict(deque)
-request_history_lock = Lock()
+from config import ALLOWED_ORIGINS
+from fire_data import fetch_fires, summarize_fires
+from rate_limit import enforce_rate_limit
 
 
-def enforce_rate_limit(request: Request):
-    client_host = request.client.host if request.client else "unknown"
-    now = monotonic()
-
-    with request_history_lock:
-        timestamps = request_history[client_host]
-        while timestamps and now - timestamps[0] >= RATE_LIMIT_WINDOW_SECONDS:
-            timestamps.popleft()
-
-        if len(timestamps) >= RATE_LIMIT_REQUESTS:
-            retry_after = max(
-                1,
-                int(RATE_LIMIT_WINDOW_SECONDS - (now - timestamps[0])) + 1,
-            )
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded. Please try again later.",
-                headers={"Retry-After": str(retry_after)},
-            )
-
-        timestamps.append(now)
-
-
-def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
-    if not NASA_KEY:
-        raise HTTPException(status_code=503, detail="NASA_KEY is not configured")
-
-    now = monotonic()
-    with fire_cache_lock:
-        cached = fire_cache.get(days)
-        if cached and not force_refresh and now - cached[0] < CACHE_TTL_SECONDS:
-            return cached[1].copy()
-
-    url = (
-        "https://firms.modaps.eosdis.nasa.gov/api/area/csv/"
-        f"{NASA_KEY}/"
-        "VIIRS_NOAA20_NRT/"
-        "-10,35,5,44/"
-        f"{days}"
-    )
-
-    try:
-        fires = pd.read_csv(url)[FIRE_COLUMNS]
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="NASA FIRMS data is temporarily unavailable",
-        ) from exc
-
-    with fire_cache_lock:
-        fire_cache[days] = (monotonic(), fires.copy())
-
-    return fires
-
-
-@app.get("/")
-def home():
+def home() -> dict[str, str]:
+    """Lightweight health endpoint that does not consume the data rate limit."""
     return {"message": "Wildfire API working"}
 
 
-@app.get("/fires", dependencies=[Depends(enforce_rate_limit)])
 def fires(
     days: Annotated[int, Query(ge=1, le=10)] = 1,
     refresh: bool = False,
-):
-    return fetch_fires(days, force_refresh=refresh).to_dict(orient="records")
+) -> list[dict]:
+    """Return recent detections for a validated observation window."""
+    fire_frame = fetch_fires(days, force_refresh=refresh)
+    return fire_frame.to_dict(orient="records")
 
 
-@app.get("/stats", dependencies=[Depends(enforce_rate_limit)])
-def stats(days: Annotated[int, Query(ge=1, le=10)] = 1):
-    df = fetch_fires(days)
-    frp = pd.to_numeric(df["frp"], errors="coerce").dropna()
+def stats(days: Annotated[int, Query(ge=1, le=10)] = 1) -> dict:
+    """Return a compact aggregate without duplicating data-access logic."""
+    return summarize_fires(fetch_fires(days), days)
 
-    return {
-        "days": days,
-        "total_detections": len(df),
-        "average_frp": round(float(frp.mean()), 2) if not frp.empty else 0,
-        "maximum_frp": round(float(frp.max()), 2) if not frp.empty else 0,
-        "detections_by_satellite": df["satellite"].value_counts().to_dict(),
-    }
+
+def create_app() -> FastAPI:
+    """Build the HTTP boundary while keeping domain services framework-light."""
+    application = FastAPI(
+        title="Wildfire Tracker API",
+        description="Recent NASA FIRMS detections for the Iberian Peninsula.",
+    )
+
+    # CORS is intentionally an allowlist: the public API need not authorize
+    # arbitrary browser origins even though it has no user credentials.
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["GET"],
+        allow_headers=["Accept", "Content-Type"],
+    )
+
+    # Explicit registration keeps route functions directly unit-testable.
+    application.add_api_route("/", home, methods=["GET"])
+    application.add_api_route(
+        "/fires",
+        fires,
+        methods=["GET"],
+        dependencies=[Depends(enforce_rate_limit)],
+    )
+    application.add_api_route(
+        "/stats",
+        stats,
+        methods=["GET"],
+        dependencies=[Depends(enforce_rate_limit)],
+    )
+    return application
+
+
+app = create_app()
