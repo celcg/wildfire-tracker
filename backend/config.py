@@ -33,3 +33,8 @@ FIRE_COLUMNS = [
 CACHE_TTL_SECONDS = 15 * 60
 RATE_LIMIT_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
+
+# Clusters link detections only when they are close in both space and time.
+# Keeping these server-owned avoids presenting arbitrary tuning as user choice.
+CLUSTER_RADIUS_KM = 15
+CLUSTER_TIME_WINDOW_HOURS = 12
