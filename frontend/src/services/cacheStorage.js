@@ -4,12 +4,16 @@
  * A validator belongs to each caller because detections are arrays while the
  * incidents endpoint returns an envelope with metadata.
  */
-export function readCachedValue(namespace, days, isValid) {
+export function readCachedValue(namespace, days, isValid, maxAgeMs) {
   try {
     const cached = JSON.parse(
       localStorage.getItem(namespace + ":" + days),
     );
-    return isValid(cached?.data) ? cached : null;
+    const cacheAge = Date.now() - cached?.cachedAt;
+    const isFresh =
+      Number.isFinite(cacheAge) && cacheAge >= 0 && cacheAge < maxAgeMs;
+
+    return isValid(cached?.data) && isFresh ? cached : null;
   } catch {
     return null;
   }

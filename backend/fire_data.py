@@ -12,6 +12,9 @@ import config
 # A lock makes the cache safe when FastAPI serves synchronous routes in threads.
 _fire_cache: dict[int, tuple[float, pd.DataFrame]] = {}
 _fire_cache_lock = Lock()
+# Cache checks alone cannot prevent a burst of simultaneous misses. This lock
+# coalesces those misses so only the first request reaches NASA.
+_nasa_fetch_lock = Lock()
 
 
 def clear_fire_cache() -> None:
@@ -53,26 +56,36 @@ def _build_firms_url(days: int) -> str:
 
 
 def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
-    """Fetch recent detections, reusing a valid per-window cache when possible."""
+    """Fetch detections without querying NASA more than once per cache window.
+
+    ``force_refresh`` bypasses browser-held data at the HTTP boundary, but it
+    deliberately does not bypass this server-side NASA protection interval.
+    """
     if not config.NASA_KEY:
         raise HTTPException(status_code=503, detail="NASA_KEY is not configured")
 
-    if not force_refresh:
+    cached_fires = _get_cached_fires(days)
+    if cached_fires is not None:
+        return cached_fires
+
+    # Recheck after acquiring the lock: another request may have populated the
+    # cache while this request was waiting.
+    with _nasa_fetch_lock:
         cached_fires = _get_cached_fires(days)
         if cached_fires is not None:
             return cached_fires
 
-    try:
-        fires = pd.read_csv(_build_firms_url(days))[config.FIRE_COLUMNS]
-    except Exception as exc:
-        # Never expose the upstream URL because it contains the NASA API key.
-        raise HTTPException(
-            status_code=502,
-            detail="NASA FIRMS data is temporarily unavailable",
-        ) from exc
+        try:
+            fires = pd.read_csv(_build_firms_url(days))[config.FIRE_COLUMNS]
+        except Exception as exc:
+            # Never expose the upstream URL because it contains the NASA API key.
+            raise HTTPException(
+                status_code=502,
+                detail="NASA FIRMS data is temporarily unavailable",
+            ) from exc
 
-    _store_fires(days, fires)
-    return fires
+        _store_fires(days, fires)
+        return fires
 
 
 def summarize_fires(fires: pd.DataFrame, days: int) -> dict:

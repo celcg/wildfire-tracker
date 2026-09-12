@@ -1,9 +1,12 @@
 // Keep environment-specific values in one module so components remain portable.
+const runtimeEnvironment = import.meta.env ?? {};
+
 export const API_URL =
-  import.meta.env.VITE_API_URL ??
+  runtimeEnvironment.VITE_API_URL ??
   "https://wildfire-api-440479996053.europe-west1.run.app";
 
 export const DEFAULT_OBSERVATION_DAYS = "1";
+export const BROWSER_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 
 // The namespace is versioned deliberately. A future cache schema can be released
 // without trying to migrate incompatible values already stored in user browsers.

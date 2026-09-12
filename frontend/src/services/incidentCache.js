@@ -1,5 +1,8 @@
-import { INCIDENT_CACHE_NAMESPACE } from "../config/fireConfig";
-import { readCachedValue, writeCachedValue } from "./cacheStorage";
+import {
+  BROWSER_CACHE_TTL_MS,
+  INCIDENT_CACHE_NAMESPACE,
+} from "../config/fireConfig.js";
+import { readCachedValue, writeCachedValue } from "./cacheStorage.js";
 
 function isIncidentCollection(data) {
   return Boolean(
@@ -20,6 +23,7 @@ export function readCachedIncidents(days) {
     INCIDENT_CACHE_NAMESPACE,
     days,
     isIncidentCollection,
+    BROWSER_CACHE_TTL_MS,
   );
 }
 

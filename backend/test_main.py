@@ -1,4 +1,6 @@
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from time import sleep
 from unittest.mock import patch
 
 import pandas as pd
@@ -48,7 +50,7 @@ class FireEndpointsTest(unittest.TestCase):
         self.assertEqual(len(response), 2)
 
     @patch("main.fetch_fires", return_value=SAMPLE_FIRES)
-    def test_manual_refresh_bypasses_server_cache(self, fetch_fires):
+    def test_manual_refresh_requests_a_controlled_server_refresh(self, fetch_fires):
         main.fires(days=3, refresh=True)
 
         fetch_fires.assert_called_once_with(3, force_refresh=True)
@@ -92,6 +94,44 @@ class FireEndpointsTest(unittest.TestCase):
         read_csv.assert_called_once()
         self.assertEqual(len(first), len(second))
 
+    def test_manual_refresh_respects_nasa_refresh_interval(self):
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch("fire_data.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
+                fire_data.fetch_fires(days=1)
+                fire_data.fetch_fires(days=1, force_refresh=True)
+
+        read_csv.assert_called_once()
+
+    def test_concurrent_refreshes_share_one_nasa_request(self):
+        def delayed_response(_url):
+            sleep(0.05)
+            return SAMPLE_FIRES
+
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch("fire_data.pd.read_csv", side_effect=delayed_response) as read_csv:
+                with ThreadPoolExecutor(max_workers=6) as executor:
+                    results = list(
+                        executor.map(
+                            lambda _index: fire_data.fetch_fires(
+                                days=1,
+                                force_refresh=True,
+                            ),
+                            range(6),
+                        )
+                    )
+
+        read_csv.assert_called_once()
+        self.assertTrue(all(len(result) == len(SAMPLE_FIRES) for result in results))
+
+    def test_nasa_data_can_refresh_after_ten_minutes(self):
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch("fire_data.monotonic", side_effect=[0, 600, 600]):
+                with patch("fire_data.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
+                    fire_data.fetch_fires(days=1)
+                    fire_data.fetch_fires(days=1)
+
+        self.assertEqual(read_csv.call_count, 2)
+
     def test_rate_limit_rejects_the_eleventh_request(self):
         request = Request(
             {
@@ -115,6 +155,31 @@ class FireEndpointsTest(unittest.TestCase):
 
         self.assertEqual(raised.exception.status_code, 429)
         self.assertIn("Retry-After", raised.exception.headers)
+
+    def test_rate_limit_uses_transport_host_not_source_port(self):
+        def request_from(host: str, port: int) -> Request:
+            return Request(
+                {
+                    "type": "http",
+                    "client": (host, port),
+                    "headers": [],
+                    "method": "GET",
+                    "path": "/fires",
+                    "query_string": b"",
+                    "scheme": "http",
+                    "server": ("testserver", 80),
+                    "http_version": "1.1",
+                }
+            )
+
+        for port in range(config.RATE_LIMIT_REQUESTS):
+            main.enforce_rate_limit(request_from("192.0.2.1", 10_000 + port))
+
+        with self.assertRaises(HTTPException):
+            main.enforce_rate_limit(request_from("192.0.2.1", 20_000))
+
+        # A different observed host receives an independent bucket.
+        main.enforce_rate_limit(request_from("198.51.100.8", 20_000))
 
 
 if __name__ == "__main__":
