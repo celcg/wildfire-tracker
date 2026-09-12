@@ -4,7 +4,7 @@ from time import sleep
 from unittest.mock import patch
 
 import pandas as pd
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 
 import main
 import config
@@ -48,6 +48,19 @@ class FireEndpointsTest(unittest.TestCase):
 
         fetch_fires.assert_called_once_with(3, force_refresh=False)
         self.assertEqual(len(response), 2)
+
+    @patch("main.fetch_fires")
+    def test_fires_exposes_stale_cache_metadata(self, fetch_fires):
+        stale_fires = SAMPLE_FIRES.copy()
+        stale_fires.attrs["data_stale"] = True
+        stale_fires.attrs["data_age_seconds"] = 10_800
+        fetch_fires.return_value = stale_fires
+        response = Response()
+
+        main.fires(days=1, response=response)
+
+        self.assertEqual(response.headers["X-Data-Stale"], "true")
+        self.assertEqual(response.headers["X-Data-Age-Seconds"], "10800")
 
     @patch("main.fetch_fires", return_value=SAMPLE_FIRES)
     def test_manual_refresh_requests_a_controlled_server_refresh(self, fetch_fires):
@@ -125,12 +138,32 @@ class FireEndpointsTest(unittest.TestCase):
 
     def test_nasa_data_can_refresh_after_ten_minutes(self):
         with patch.object(config, "NASA_KEY", "test-key"):
-            with patch("fire_data.monotonic", side_effect=[0, 600, 600]):
+            with patch("fire_data.monotonic", side_effect=[0, 0, 600, 600]):
                 with patch("fire_data.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
                     fire_data.fetch_fires(days=1)
                     fire_data.fetch_fires(days=1)
 
         self.assertEqual(read_csv.call_count, 2)
+
+    def test_expired_data_is_returned_when_nasa_is_unavailable(self):
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch(
+                "fire_data.monotonic",
+                side_effect=[0, 0, 600, 600, 601, 601],
+            ):
+                with patch(
+                    "fire_data.pd.read_csv",
+                    side_effect=[SAMPLE_FIRES, RuntimeError("NASA unavailable")],
+                ) as read_csv:
+                    fire_data.fetch_fires(days=1)
+                    stale_fires = fire_data.fetch_fires(days=1)
+                    repeated_stale_fires = fire_data.fetch_fires(days=1)
+
+        self.assertEqual(read_csv.call_count, 2)
+        self.assertEqual(len(stale_fires), len(SAMPLE_FIRES))
+        self.assertTrue(stale_fires.attrs["data_stale"])
+        self.assertGreaterEqual(stale_fires.attrs["data_age_seconds"], 0)
+        self.assertTrue(repeated_stale_fires.attrs["data_stale"])
 
     def test_rate_limit_rejects_the_eleventh_request(self):
         request = Request(

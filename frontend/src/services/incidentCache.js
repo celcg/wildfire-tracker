@@ -27,6 +27,6 @@ export function readCachedIncidents(days) {
   );
 }
 
-export function writeCachedIncidents(days, data) {
-  return writeCachedValue(INCIDENT_CACHE_NAMESPACE, days, data);
+export function writeCachedIncidents(days, data, freshness) {
+  return writeCachedValue(INCIDENT_CACHE_NAMESPACE, days, data, { freshness });
 }

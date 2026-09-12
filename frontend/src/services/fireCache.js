@@ -13,6 +13,6 @@ export function readCachedFires(days) {
   );
 }
 
-export function writeCachedFires(days, data) {
-  return writeCachedValue(FIRE_CACHE_NAMESPACE, days, data);
+export function writeCachedFires(days, data, freshness) {
+  return writeCachedValue(FIRE_CACHE_NAMESPACE, days, data, { freshness });
 }

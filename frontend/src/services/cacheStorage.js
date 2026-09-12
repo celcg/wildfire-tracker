@@ -19,13 +19,13 @@ export function readCachedValue(namespace, days, isValid, maxAgeMs) {
   }
 }
 
-export function writeCachedValue(namespace, days, data) {
+export function writeCachedValue(namespace, days, data, metadata = {}) {
   const cachedAt = Date.now();
 
   try {
     localStorage.setItem(
       namespace + ":" + days,
-      JSON.stringify({ data, cachedAt }),
+      JSON.stringify({ data, cachedAt, metadata }),
     );
   } catch {
     // Data remains usable when private browsing or storage quotas block writes.

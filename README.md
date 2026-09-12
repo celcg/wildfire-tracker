@@ -24,6 +24,7 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Switchable detection and cluster layers with aggregate FRP insights
 - Two-hour browser cache with an explicit manual refresh action
 - Ten-minute NASA request protection and a conservative 10-request-per-minute limit
+- Stale-if-error fallback that keeps the last map visible with its data age
 
 ## Architecture
 
@@ -97,6 +98,8 @@ Using a `days` query parameter keeps the resource-oriented API extensible and av
 Setting `refresh=true` explicitly bypasses browser-held data, but it does not bypass the API's ten-minute NASA protection window. Concurrent cache misses are coalesced so only one request per API instance reaches NASA. Data endpoints are limited to 10 requests per minute per observed transport peer and return `429 Too Many Requests` with a `Retry-After` header when that limit is exceeded.
 
 The lightweight limiter and server cache are process-local. `request.client.host` identifies the rate-limit bucket; behind a managed proxy this can intentionally become a shared bucket rather than a reliable end-user identity. A strict service-wide NASA limit across multiple Cloud Run instances requires either a single maximum instance or a shared cache and lock such as Redis.
+
+If NASA is temporarily unavailable after the ten-minute cache window expires, the API preserves and returns the last successful dataset instead of emptying the map. `X-Data-Stale` and `X-Data-Age-Seconds` response headers let the React client show a visible age warning while keeping the established JSON response shapes unchanged.
 
 ## Intelligent Fire Clustering
 
