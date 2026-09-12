@@ -1,8 +1,11 @@
 """FastAPI composition root for the Wildfire Tracker service."""
 
+import logging
+from time import perf_counter
 from typing import Annotated
+from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Query, Response
+from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import ALLOWED_ORIGINS
@@ -13,8 +16,86 @@ from fire_data import (
     summarize_fires,
 )
 from incident_clustering import cluster_fires
+from logging_config import (
+    REQUEST_ID_HEADER,
+    bind_request_id,
+    configure_logging,
+    get_logger,
+    log_event,
+    reset_request_id,
+)
 from rate_limit import enforce_rate_limit
 from schemas import IncidentCollection
+
+
+logger = get_logger("http")
+
+
+def _resolve_request_id(candidate: str | None) -> str:
+    """Accept canonical UUIDs only so untrusted headers cannot poison logs."""
+    if candidate:
+        try:
+            return str(UUID(candidate))
+        except (ValueError, AttributeError):
+            pass
+    return str(uuid4())
+
+
+def _request_log_fields(request: Request, response: Response | None) -> dict:
+    """Whitelist useful metadata instead of logging raw URLs or headers."""
+    route = request.scope.get("route")
+    fields = {
+        "method": request.method,
+        "path": getattr(route, "path", "unmatched"),
+    }
+    for parameter in ("days", "refresh"):
+        if parameter in request.query_params:
+            fields[parameter] = request.query_params[parameter]
+
+    if response is not None:
+        fields["status"] = response.status_code
+        stale = response.headers.get("X-Data-Stale")
+        age = response.headers.get("X-Data-Age-Seconds")
+        if stale is not None:
+            fields["data_stale"] = stale
+        if age is not None:
+            fields["data_age_seconds"] = age
+    return fields
+
+
+async def log_http_request(request: Request, call_next):
+    """Correlate browser and API activity with one safe completion event."""
+    request_id = _resolve_request_id(request.headers.get(REQUEST_ID_HEADER))
+    token = bind_request_id(request_id)
+    started_at = perf_counter()
+    response = None
+
+    try:
+        response = await call_next(request)
+        response.headers[REQUEST_ID_HEADER] = request_id
+        level = logging.WARNING if response.status_code >= 400 else logging.INFO
+        if response.status_code >= 500:
+            level = logging.ERROR
+        log_event(
+            logger,
+            level,
+            "api.request.completed",
+            **_request_log_fields(request, response),
+            duration_ms=round((perf_counter() - started_at) * 1000, 2),
+        )
+        return response
+    except Exception as exc:
+        log_event(
+            logger,
+            logging.ERROR,
+            "api.request.failed",
+            **_request_log_fields(request, response),
+            duration_ms=round((perf_counter() - started_at) * 1000, 2),
+            error_type=type(exc).__name__,
+        )
+        raise
+    finally:
+        reset_request_id(token)
 
 
 def home() -> dict[str, str]:
@@ -70,6 +151,7 @@ def incidents(
 
 def create_app() -> FastAPI:
     """Build the HTTP boundary while keeping domain services framework-light."""
+    configure_logging()
     application = FastAPI(
         title="Wildfire Tracker API",
         description="Recent NASA FIRMS detections for the Iberian Peninsula.",
@@ -82,9 +164,14 @@ def create_app() -> FastAPI:
         allow_origins=ALLOWED_ORIGINS,
         allow_credentials=False,
         allow_methods=["GET"],
-        allow_headers=["Accept", "Content-Type"],
-        expose_headers=["X-Data-Stale", "X-Data-Age-Seconds"],
+        allow_headers=["Accept", "Content-Type", REQUEST_ID_HEADER],
+        expose_headers=[
+            "X-Data-Stale",
+            "X-Data-Age-Seconds",
+            REQUEST_ID_HEADER,
+        ],
     )
+    application.middleware("http")(log_http_request)
 
     # Explicit registration keeps route functions directly unit-testable.
     application.add_api_route("/", home, methods=["GET"])

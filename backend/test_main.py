@@ -101,11 +101,16 @@ class FireEndpointsTest(unittest.TestCase):
     def test_server_cache_avoids_repeated_nasa_requests(self):
         with patch.object(config, "NASA_KEY", "test-key"):
             with patch("fire_data.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
-                first = fire_data.fetch_fires(days=1)
-                second = fire_data.fetch_fires(days=1)
+                with patch("fire_data.log_event") as logged_event:
+                    first = fire_data.fetch_fires(days=1)
+                    second = fire_data.fetch_fires(days=1)
 
         read_csv.assert_called_once()
         self.assertEqual(len(first), len(second))
+        events = [call.args[2] for call in logged_event.call_args_list]
+        self.assertIn("cache.miss", events)
+        self.assertIn("nasa.fetch_succeeded", events)
+        self.assertIn("cache.hit", events)
 
     def test_manual_refresh_respects_nasa_refresh_interval(self):
         with patch.object(config, "NASA_KEY", "test-key"):
@@ -180,14 +185,16 @@ class FireEndpointsTest(unittest.TestCase):
             }
         )
 
-        for _ in range(config.RATE_LIMIT_REQUESTS):
-            main.enforce_rate_limit(request)
+        with patch("rate_limit.log_event") as logged_event:
+            for _ in range(config.RATE_LIMIT_REQUESTS):
+                main.enforce_rate_limit(request)
 
-        with self.assertRaises(HTTPException) as raised:
-            main.enforce_rate_limit(request)
+            with self.assertRaises(HTTPException) as raised:
+                main.enforce_rate_limit(request)
 
         self.assertEqual(raised.exception.status_code, 429)
         self.assertIn("Retry-After", raised.exception.headers)
+        self.assertEqual(logged_event.call_args.args[2], "rate_limit.rejected")
 
     def test_rate_limit_uses_transport_host_not_source_port(self):
         def request_from(host: str, port: int) -> Request:

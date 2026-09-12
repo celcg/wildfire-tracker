@@ -55,6 +55,41 @@ The frontend and API are deployed independently. FastAPI acts as a small backend
 - **NASA FIRMS:** authoritative near-real-time satellite fire-detection data.
 - **Firebase Hosting:** simple, globally distributed hosting for the static frontend.
 - **Google Cloud Run:** managed, scalable hosting for the Python API with environment-based secret configuration.
+- **Secret Manager:** keeps the NASA key outside source code and literal Cloud Run environment values while preserving the established `NASA_KEY` runtime interface.
+
+## Logging and Request Correlation
+
+The API uses structured, privacy-conscious logging. Every React request sends a
+fresh `X-Request-ID`; FastAPI validates it, returns it in the response, and adds
+it to related HTTP, cache, rate-limit, and NASA access events. This makes one
+browser/API interaction traceable without storing visitor IP addresses, request
+bodies, fire coordinates, response payloads, or the secret-bearing NASA URL.
+
+In local development, readable UTC-timestamped logs are written to
+`backend/logs/wildfire-api.log`. The active file rotates at 5 MiB and retains
+five backups (`.log.1` through `.log.5`), bounding the default footprint to
+approximately 30 MiB. The entire directory is excluded from Git.
+
+Cloud Run does not use local log files because its writable filesystem is
+ephemeral. Production emits one structured JSON object per line to `stdout`,
+which Cloud Run collects in Cloud Logging. The deployed service obtains
+`NASA_KEY` through a versioned Secret Manager reference rather than a literal
+environment value. The following non-secret environment variables control the
+logging behavior without code changes:
+
+| Variable | Local default | Purpose |
+| --- | --- | --- |
+| `LOG_LEVEL` | `INFO` | Minimum application severity |
+| `LOG_TO_FILE` | `true` locally, `false` on Cloud Run | Enable the rotating file handler |
+| `LOG_FILE_PATH` | `backend/logs/wildfire-api.log` | Override the local destination |
+| `LOG_MAX_BYTES` | `5242880` | Rotate after approximately 5 MiB |
+| `LOG_BACKUP_COUNT` | `5` | Number of rotated files retained |
+
+Log fields are allowlisted and control characters are neutralized to prevent
+log injection. The NASA key is defensively redacted at the formatter boundary,
+and upstream failures record only their exception type rather than their URL or
+message. If an API error reaches React, its JavaScript `Error` carries the same
+`requestId` shown in the server log.
 
 ## Local Development
 
