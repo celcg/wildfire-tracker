@@ -1,15 +1,15 @@
 :root {
-  --canopy-950: #04110f;
-  --canopy-900: #061713;
-  --ocean-900: #071e26;
-  --ocean-800: #0b2c31;
-  --mint-300: #71f6b5;
-  --cyan-300: #62d9e8;
-  --ember-400: #ff795c;
-  --mist-100: #d9f7e8;
-  --mist-300: #9fc9ba;
-  --line: rgba(113, 246, 181, 0.18);
-  --line-strong: rgba(113, 246, 181, 0.38);
+  --canopy-950: #090605;
+  --canopy-900: #120b08;
+  --ocean-900: #18100c;
+  --ocean-800: #241510;
+  --mint-300: #ff9418;
+  --cyan-300: #ffd166;
+  --ember-400: #ff4d21;
+  --mist-100: #f8e5d6;
+  --mist-300: #c5a89a;
+  --line: rgba(255, 148, 24, 0.18);
+  --line-strong: rgba(255, 148, 24, 0.4);
   --font-display: Bahnschrift, "Segoe UI Variable Display", "Trebuchet MS", sans-serif;
   --font-body: "Segoe UI Variable Text", "Segoe UI", sans-serif;
   --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
@@ -43,10 +43,10 @@ body::before {
   z-index: -1;
   inset: 0;
   background:
-    linear-gradient(rgba(113, 246, 181, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(113, 246, 181, 0.025) 1px, transparent 1px),
-    radial-gradient(circle at 82% 8%, rgba(21, 105, 89, 0.3), transparent 34%),
-    radial-gradient(circle at 10% 36%, rgba(15, 74, 83, 0.22), transparent 32%),
+    linear-gradient(rgba(255, 148, 24, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 148, 24, 0.022) 1px, transparent 1px),
+    radial-gradient(circle at 82% 8%, rgba(164, 48, 16, 0.25), transparent 34%),
+    radial-gradient(circle at 10% 36%, rgba(91, 38, 20, 0.22), transparent 32%),
     var(--canopy-950);
   background-size: 48px 48px, 48px 48px, auto, auto, auto;
   content: "";
