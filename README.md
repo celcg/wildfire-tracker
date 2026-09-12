@@ -28,22 +28,45 @@ The project demonstrates API design, third-party data integration, cloud deploym
 
 ## Architecture
 
-```text
-User selects a time window
-          |
-          v
-React + React Leaflet (Firebase Hosting)
-          |
-          | HTTPS / JSON
-          v
-FastAPI REST API (Google Cloud Run)
-          |
-          | CSV data request + explainable clustering
-          v
-NASA FIRMS API
+```mermaid
+flowchart LR
+    User[User] --> UI
+
+    subgraph Firebase["Frontend · Firebase Hosting"]
+        UI[React + React Leaflet] --> Hooks[Data hooks]
+        Hooks <--> BrowserCache["localStorage cache · 2 h"]
+        Hooks --> Client["API service · X-Request-ID"]
+    end
+
+    Client -->|HTTPS / JSON| Middleware
+
+    subgraph CloudRun["Backend · Google Cloud Run"]
+        Middleware["FastAPI middleware · CORS + request logging"] --> Limiter["Rate limiter · 10 requests/min/observed host"]
+        Limiter --> Routes["/fires · /stats · /incidents"]
+        Routes --> ServerCache["NASA access + cache · 1 h + stale-if-error"]
+        Routes --> Clustering[Spatiotemporal clustering]
+        AppLogs[Application events]
+    end
+
+    ServerCache -->|"Coalesced refresh · max once/hour/instance"| NASA[NASA FIRMS]
+    Secrets[Google Secret Manager] -. "injects NASA_KEY" .-> ServerCache
+    Middleware --> AppLogs
+    Limiter --> AppLogs
+    ServerCache --> AppLogs
+    AppLogs -->|Structured JSON / stdout| CloudLogging[Cloud Logging]
+    AppLogs -. "Local only · rotating 5 MiB × 6 files" .-> LocalLogs[Local log files]
+
+    BackendTests["Backend · unittest"] -. validates .-> CloudRun
+    FrontendTests["Frontend · Node tests + Oxlint + Vite build"] -. validates .-> Firebase
 ```
 
-The frontend and API are deployed independently. FastAPI acts as a small backend-for-frontend layer: it protects the NASA API key, defines a stable JSON contract, and keeps external data-processing concerns out of the browser. The browser reuses results for at most two hours. A manual refresh bypasses that browser cache, while each Cloud Run instance coalesces concurrent cache misses and queries NASA at most once per observation window every hour.
+The frontend and API deploy independently. A manual refresh bypasses the
+two-hour browser cache, but never the backend's one-hour NASA protection
+window. The API cache, refresh lock, and rate limiter are process-local to each
+Cloud Run instance; stale data remains available when NASA fails. React and
+FastAPI correlate requests with `X-Request-ID`, while logs exclude payloads,
+coordinates, visitor IPs, and secret values. Production logs go to Cloud
+Logging; bounded rotating files are used only during local development.
 
 ## Tech Stack + Why
 
