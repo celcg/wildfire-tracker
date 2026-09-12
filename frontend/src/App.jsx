@@ -5,6 +5,7 @@ import { ControlDeck } from "./components/ControlDeck";
 import { FireMap } from "./components/FireMap";
 import { Hero } from "./components/Hero";
 import { IncidentSummary } from "./components/IncidentSummary";
+import { StaleDataNotice } from "./components/StaleDataNotice";
 import { DEFAULT_OBSERVATION_DAYS } from "./config/fireConfig";
 import { useFireData } from "./hooks/useFireData";
 import { useIncidentData } from "./hooks/useIncidentData";
@@ -35,6 +36,9 @@ function App() {
   const activeLastUpdated = showClusters
     ? incidentData.lastUpdated
     : fireData.lastUpdated;
+  const activeFreshness = showClusters
+    ? incidentData.freshness
+    : fireData.freshness;
 
   const handleDaysChange = (nextDays) => {
     setRefreshError("");
@@ -65,10 +69,14 @@ function App() {
     const refreshedCollection = await incidentData.loadIncidents(days, true);
 
     if (refreshedCollection) {
-      const refreshedDetections = refreshedCollection.incidents.flatMap(
+      const refreshedDetections = refreshedCollection.data.incidents.flatMap(
         (incident) => incident.detections,
       );
-      fireData.replaceFires(days, refreshedDetections);
+      fireData.replaceFires(
+        days,
+        refreshedDetections,
+        refreshedCollection.freshness,
+      );
     } else {
       setRefreshError(
         "Points and clusters could not be refreshed. Please try again.",
@@ -99,6 +107,10 @@ function App() {
           <span aria-hidden="true">!</span>
           {activeError}
         </p>
+      ) : null}
+
+      {activeFreshness.isStale ? (
+        <StaleDataNotice sourceUpdatedAt={activeFreshness.sourceUpdatedAt} />
       ) : null}
 
       {showClusters ? (

@@ -1,4 +1,15 @@
-import { API_URL } from "../config/fireConfig";
+import { API_URL } from "../config/fireConfig.js";
+
+function readFreshness(response) {
+  const isStale = response.headers.get("X-Data-Stale") === "true";
+  const parsedAge = Number(response.headers.get("X-Data-Age-Seconds"));
+  const ageSeconds = Number.isFinite(parsedAge) ? Math.max(0, parsedAge) : 0;
+
+  return {
+    isStale,
+    sourceUpdatedAt: isStale ? Date.now() - ageSeconds * 1000 : null,
+  };
+}
 
 /**
  * Owns the HTTP contract so UI code does not know URL construction or response
@@ -27,7 +38,7 @@ export async function fetchFires({ days, forceRefresh, signal }) {
     throw new TypeError("The fire API returned an invalid response");
   }
 
-  return data;
+  return { data, freshness: readFreshness(response) };
 }
 
 export async function fetchIncidents({ days, forceRefresh, signal }) {
@@ -59,5 +70,5 @@ export async function fetchIncidents({ days, forceRefresh, signal }) {
     throw new TypeError("The incident API returned an invalid response");
   }
 
-  return data;
+  return { data, freshness: readFreshness(response) };
 }

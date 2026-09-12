@@ -29,8 +29,8 @@ FIRE_COLUMNS = [
     "frp",
 ]
 
-# These conservative in-memory limits reduce upstream requests per instance.
-CACHE_TTL_SECONDS = 15 * 60
+# NASA is never queried more than once per interval by the same API instance.
+CACHE_TTL_SECONDS = 10 * 60
 RATE_LIMIT_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
 

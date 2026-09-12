@@ -7,6 +7,7 @@ import {
 
 const LOAD_ERROR_MESSAGE =
   "Possible fire clusters could not be loaded. Please try again.";
+const FRESH_DATA = { isStale: false, sourceUpdatedAt: null };
 
 /**
  * Loads derived clusters only when the user requests that map layer.
@@ -20,6 +21,7 @@ export function useIncidentData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [freshness, setFreshness] = useState(FRESH_DATA);
   const activeRequest = useRef(null);
 
   const loadIncidents = useCallback(
@@ -31,12 +33,14 @@ export function useIncidentData() {
         const cached = readCachedIncidents(targetDays);
 
         if (cached) {
+          const cachedFreshness = cached.metadata?.freshness ?? FRESH_DATA;
           setCollection(cached.data);
+          setFreshness(cachedFreshness);
           loadedDays.current = targetDays;
           setLastUpdated(cached.cachedAt);
           setLoading(false);
           setError("");
-          return cached.data;
+          return { data: cached.data, freshness: cachedFreshness };
         }
       }
 
@@ -50,18 +54,23 @@ export function useIncidentData() {
       setError("");
 
       try {
-        const data = await fetchIncidents({
+        const result = await fetchIncidents({
           days: targetDays,
           forceRefresh,
           signal: controller.signal,
         });
 
         if (!controller.signal.aborted) {
-          const cachedAt = writeCachedIncidents(targetDays, data);
-          setCollection(data);
+          const cachedAt = writeCachedIncidents(
+            targetDays,
+            result.data,
+            result.freshness,
+          );
+          setCollection(result.data);
+          setFreshness(result.freshness);
           loadedDays.current = targetDays;
           setLastUpdated(cachedAt);
-          return data;
+          return result;
         }
       } catch (requestError) {
         if (requestError.name !== "AbortError") {
@@ -89,6 +98,7 @@ export function useIncidentData() {
   return {
     collection,
     error,
+    freshness,
     lastUpdated,
     loadIncidents,
     loading,

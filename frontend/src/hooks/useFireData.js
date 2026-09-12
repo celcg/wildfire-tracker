@@ -5,6 +5,7 @@ import { readCachedFires, writeCachedFires } from "../services/fireCache";
 
 const LOAD_ERROR_MESSAGE =
   "Fire detections could not be loaded. Please try again.";
+const FRESH_DATA = { isStale: false, sourceUpdatedAt: null };
 
 /**
  * Coordinates cached and remote fire data behind a small UI-facing interface.
@@ -22,6 +23,9 @@ export function useFireData() {
   const [lastUpdated, setLastUpdated] = useState(
     initialCache?.cachedAt ?? null,
   );
+  const [freshness, setFreshness] = useState(
+    initialCache?.metadata?.freshness ?? FRESH_DATA,
+  );
   const activeRequest = useRef(null);
 
   const loadFires = useCallback(async (targetDays, forceRefresh = false) => {
@@ -33,11 +37,13 @@ export function useFireData() {
       const cached = readCachedFires(targetDays);
 
       if (cached) {
+        const cachedFreshness = cached.metadata?.freshness ?? FRESH_DATA;
         setFires(cached.data);
+        setFreshness(cachedFreshness);
         setLastUpdated(cached.cachedAt);
         setLoading(false);
         setError("");
-        return cached.data;
+        return { data: cached.data, freshness: cachedFreshness };
       }
     }
 
@@ -47,17 +53,22 @@ export function useFireData() {
     setError("");
 
     try {
-      const data = await fetchFires({
+      const result = await fetchFires({
         days: targetDays,
         forceRefresh,
         signal: controller.signal,
       });
 
       if (!controller.signal.aborted) {
-        const cachedAt = writeCachedFires(targetDays, data);
-        setFires(data);
+        const cachedAt = writeCachedFires(
+          targetDays,
+          result.data,
+          result.freshness,
+        );
+        setFires(result.data);
+        setFreshness(result.freshness);
         setLastUpdated(cachedAt);
-        return data;
+        return result;
       }
     } catch (requestError) {
       if (requestError.name !== "AbortError") {
@@ -74,14 +85,15 @@ export function useFireData() {
     }
   }, []);
 
-  const replaceFires = useCallback((targetDays, data) => {
+  const replaceFires = useCallback((targetDays, data, nextFreshness) => {
     // A cluster refresh carries the same source detections, so reuse that
     // response instead of spending a second API and NASA request.
     activeRequest.current?.abort();
     activeRequest.current = null;
 
-    const cachedAt = writeCachedFires(targetDays, data);
+    const cachedAt = writeCachedFires(targetDays, data, nextFreshness);
     setFires(data);
+    setFreshness(nextFreshness);
     setLastUpdated(cachedAt);
     setLoading(false);
     setError("");
@@ -107,6 +119,7 @@ export function useFireData() {
   return {
     error,
     fires,
+    freshness,
     lastUpdated,
     loadFires,
     loading,
