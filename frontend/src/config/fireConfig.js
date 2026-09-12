@@ -1,9 +1,17 @@
 // Keep environment-specific values in one module so components remain portable.
 const runtimeEnvironment = import.meta.env ?? {};
-
-export const API_URL =
-  runtimeEnvironment.VITE_API_URL ??
+const LOCAL_API_URL = "/api";
+const CLOUD_RUN_API_URL =
   "https://wildfire-api-440479996053.europe-west1.run.app";
+
+export function resolveApiUrl(environment) {
+  return (
+    environment.VITE_API_URL ??
+    (environment.DEV ? LOCAL_API_URL : CLOUD_RUN_API_URL)
+  );
+}
+
+export const API_URL = resolveApiUrl(runtimeEnvironment);
 
 export const DEFAULT_OBSERVATION_DAYS = "1";
 export const BROWSER_CACHE_TTL_MS = 2 * 60 * 60 * 1000;

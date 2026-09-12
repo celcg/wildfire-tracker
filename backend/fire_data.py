@@ -1,6 +1,7 @@
 """NASA FIRMS access and the process-local fire-data cache."""
 
 import logging
+from dataclasses import dataclass
 from threading import Lock
 from time import monotonic, perf_counter
 
@@ -19,6 +20,15 @@ _fire_cache_lock = Lock()
 _nasa_fetch_lock = Lock()
 _last_nasa_attempt: dict[int, float] = {}
 
+
+@dataclass(frozen=True)
+class NasaFailureBackoff:
+    failure_count: int
+    retry_at: float
+
+
+_nasa_failure_backoff: dict[int, NasaFailureBackoff] = {}
+
 DATA_STALE_ATTR = "data_stale"
 DATA_AGE_SECONDS_ATTR = "data_age_seconds"
 logger = get_logger("fire_data")
@@ -30,6 +40,7 @@ def clear_fire_cache() -> None:
         with _fire_cache_lock:
             _fire_cache.clear()
         _last_nasa_attempt.clear()
+        _nasa_failure_backoff.clear()
 
 
 def _with_cache_metadata(
@@ -70,6 +81,27 @@ def _is_fresh(fires: pd.DataFrame | None) -> bool:
 def _retry_after(last_attempt: float, now: float) -> int:
     elapsed = max(0, now - last_attempt)
     return max(1, int(config.CACHE_TTL_SECONDS - elapsed) + 1)
+
+
+def _backoff_retry_after(backoff: NasaFailureBackoff, now: float) -> int:
+    return max(1, int(backoff.retry_at - now) + 1)
+
+
+def _register_cold_failure(days: int, now: float) -> tuple[int, int]:
+    previous = _nasa_failure_backoff.get(days)
+    failure_count = previous.failure_count + 1 if previous else 1
+    # Bound the exponent as well as the result so pathological outages cannot
+    # construct unnecessarily large integers after many retries.
+    exponent = min(failure_count - 1, 30)
+    delay = min(
+        config.NASA_BACKOFF_INITIAL_SECONDS * (2**exponent),
+        config.NASA_BACKOFF_MAX_SECONDS,
+    )
+    _nasa_failure_backoff[days] = NasaFailureBackoff(
+        failure_count=failure_count,
+        retry_at=now + delay,
+    )
+    return failure_count, delay
 
 
 def _build_firms_url(days: int) -> str:
@@ -115,10 +147,32 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
             log_event(logger, logging.INFO, "cache.hit_after_wait", days=days)
             return cached_fires
 
+        cold_backoff = (
+            _nasa_failure_backoff.get(days)
+            if cached_fires is None
+            else None
+        )
+        if cold_backoff is not None and now < cold_backoff.retry_at:
+            retry_after = _backoff_retry_after(cold_backoff, now)
+            log_event(
+                logger,
+                logging.WARNING,
+                "nasa.backoff_active",
+                days=days,
+                failure_count=cold_backoff.failure_count,
+                retry_after_seconds=retry_after,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="NASA FIRMS refresh is temporarily backed off",
+                headers={"Retry-After": str(retry_after)},
+            )
+
         last_attempt = _last_nasa_attempt.get(days)
         if (
             last_attempt is not None
             and now - last_attempt < config.CACHE_TTL_SECONDS
+            and cold_backoff is None
         ):
             if cached_fires is not None:
                 log_event(
@@ -152,6 +206,10 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
         try:
             fires = pd.read_csv(_build_firms_url(days))[config.FIRE_COLUMNS]
         except Exception as exc:
+            failure_count = None
+            retry_after = None
+            if cached_fires is None:
+                failure_count, retry_after = _register_cold_failure(days, now)
             log_event(
                 logger,
                 logging.WARNING,
@@ -160,6 +218,8 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
                 duration_ms=round((perf_counter() - fetch_started_at) * 1000, 2),
                 error_type=type(exc).__name__,
                 stale_available=cached_fires is not None,
+                failure_count=failure_count,
+                retry_after_seconds=retry_after,
             )
             if cached_fires is not None:
                 log_event(
@@ -174,9 +234,11 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
             raise HTTPException(
                 status_code=502,
                 detail="NASA FIRMS data is temporarily unavailable",
+                headers={"Retry-After": str(retry_after)},
             ) from exc
 
         _store_fires(days, fires, now)
+        _nasa_failure_backoff.pop(days, None)
         log_event(
             logger,
             logging.INFO,

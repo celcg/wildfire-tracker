@@ -32,6 +32,10 @@ FIRE_COLUMNS = [
 
 # NASA is never queried more than once per interval by the same API instance.
 CACHE_TTL_SECONDS = 60 * 60
+# A cold instance with no successful data retries sooner after NASA failures,
+# while the cap prevents an outage from causing sustained upstream traffic.
+NASA_BACKOFF_INITIAL_SECONDS = 60
+NASA_BACKOFF_MAX_SECONDS = 15 * 60
 RATE_LIMIT_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
 

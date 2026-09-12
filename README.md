@@ -24,6 +24,7 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Switchable detection and cluster layers with aggregate FRP insights
 - Two-hour browser cache with an explicit manual refresh action
 - One-hour NASA request protection and a conservative 10-request-per-minute limit
+- Exponential NASA retry backoff when a cold API instance has no cached data
 - Stale-if-error fallback that keeps the last map visible with its data age
 
 ## Architecture
@@ -43,7 +44,7 @@ flowchart LR
     subgraph CloudRun["Backend · Google Cloud Run"]
         Middleware["FastAPI middleware · CORS + request logging"] --> Limiter["Rate limiter · 10 requests/min/observed host"]
         Limiter --> Routes["/fires · /stats · /incidents"]
-        Routes --> ServerCache["NASA access + cache · 1 h + stale-if-error"]
+        Routes --> ServerCache["NASA access · 1 h cache + cold-start backoff"]
         Routes --> Clustering[Spatiotemporal clustering]
         AppLogs[Application events]
     end
@@ -157,7 +158,7 @@ Setting `refresh=true` explicitly bypasses browser-held data, but it does not by
 
 The lightweight limiter and server cache are process-local. `request.client.host` identifies the rate-limit bucket; behind a managed proxy this can intentionally become a shared bucket rather than a reliable end-user identity. A strict service-wide NASA limit across multiple Cloud Run instances requires either a single maximum instance or a shared cache and lock such as Redis.
 
-If NASA is temporarily unavailable after the one-hour cache window expires, the API preserves and returns the last successful dataset instead of emptying the map. `X-Data-Stale` and `X-Data-Age-Seconds` response headers let the React client show a visible age warning while keeping the established JSON response shapes unchanged.
+If NASA is temporarily unavailable after the one-hour cache window expires, the API preserves the last successful dataset instead of emptying the map. `X-Data-Stale` and `X-Data-Age-Seconds` response headers let the React client show a visible age warning while keeping the established JSON response shapes unchanged. A cold instance with no cached dataset retries NASA after 1, 2, 4, and 8 minutes, then caps the exponential backoff at 15 minutes until a request succeeds.
 
 ## Intelligent Fire Clustering
 
