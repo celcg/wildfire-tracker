@@ -18,3 +18,8 @@ dist/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local Codex workspace guidance and installed skills
+.agents/
+AGENTS.md
+skills-lock.json
