@@ -1,4 +1,4 @@
-import { INCIDENT_SEVERITY_LEVELS } from "../config/fireConfig";
+import { INCIDENT_SEVERITY_LEVELS } from "../config/fireConfig.js";
 
 export function getIncidentSeverity(totalFrp) {
   const power = Number(totalFrp);
@@ -10,6 +10,14 @@ export function getIncidentSeverity(totalFrp) {
   return (
     INCIDENT_SEVERITY_LEVELS.find((level) => power < level.max) ??
     INCIDENT_SEVERITY_LEVELS[0]
+  );
+}
+
+export function hasClusterArea(incident) {
+  return Boolean(
+    Number(incident?.detection_count) > 1 &&
+      Array.isArray(incident?.boundary) &&
+      incident.boundary.length >= 3,
   );
 }
 

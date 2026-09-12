@@ -26,6 +26,7 @@ import {
   formatObservedAt,
   formatTrend,
   getIncidentSeverity,
+  hasClusterArea,
 } from "../domain/incidentPresentation";
 import { DataGuide } from "./DataGuide";
 
@@ -82,10 +83,7 @@ const FireMarkers = memo(function FireMarkers({ fires }) {
 
 const IncidentAreas = memo(function IncidentAreas({ incidents }) {
   return incidents
-    .filter(
-      (incident) =>
-        Array.isArray(incident.boundary) && incident.boundary.length >= 3,
-    )
+    .filter(hasClusterArea)
     .map((incident) => {
       const severity = getIncidentSeverity(incident.total_frp_mw);
       const boundary = incident.boundary.map((point) => [

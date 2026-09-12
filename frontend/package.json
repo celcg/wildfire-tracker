@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node --test src/services/cacheStorage.test.js src/services/fireApi.test.js",
+    "test": "node --test src/config/fireConfig.test.js src/domain/incidentPresentation.test.js src/services/cacheStorage.test.js src/services/fireApi.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
