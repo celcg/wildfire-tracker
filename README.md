@@ -23,7 +23,7 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Explainable spatiotemporal grouping into possible fire clusters
 - Switchable detection and cluster layers with aggregate FRP insights
 - Two-hour browser cache with an explicit manual refresh action
-- Ten-minute NASA request protection and a conservative 10-request-per-minute limit
+- One-hour NASA request protection and a conservative 10-request-per-minute limit
 - Stale-if-error fallback that keeps the last map visible with its data age
 
 ## Architecture
@@ -43,7 +43,7 @@ FastAPI REST API (Google Cloud Run)
 NASA FIRMS API
 ```
 
-The frontend and API are deployed independently. FastAPI acts as a small backend-for-frontend layer: it protects the NASA API key, defines a stable JSON contract, and keeps external data-processing concerns out of the browser. The browser reuses results for at most two hours. A manual refresh bypasses that browser cache, while each Cloud Run instance coalesces concurrent cache misses and queries NASA at most once per observation window every ten minutes.
+The frontend and API are deployed independently. FastAPI acts as a small backend-for-frontend layer: it protects the NASA API key, defines a stable JSON contract, and keeps external data-processing concerns out of the browser. The browser reuses results for at most two hours. A manual refresh bypasses that browser cache, while each Cloud Run instance coalesces concurrent cache misses and queries NASA at most once per observation window every hour.
 
 ## Tech Stack + Why
 
@@ -95,11 +95,11 @@ GET /incidents?days=3&refresh=true
 
 Using a `days` query parameter keeps the resource-oriented API extensible and avoids creating separate endpoints for every supported time window.
 
-Setting `refresh=true` explicitly bypasses browser-held data, but it does not bypass the API's ten-minute NASA protection window. Concurrent cache misses are coalesced so only one request per API instance reaches NASA. Data endpoints are limited to 10 requests per minute per observed transport peer and return `429 Too Many Requests` with a `Retry-After` header when that limit is exceeded.
+Setting `refresh=true` explicitly bypasses browser-held data, but it does not bypass the API's one-hour NASA protection window. Concurrent cache misses are coalesced so only one request per API instance reaches NASA. Data endpoints are limited to 10 requests per minute per observed transport peer and return `429 Too Many Requests` with a `Retry-After` header when that limit is exceeded.
 
 The lightweight limiter and server cache are process-local. `request.client.host` identifies the rate-limit bucket; behind a managed proxy this can intentionally become a shared bucket rather than a reliable end-user identity. A strict service-wide NASA limit across multiple Cloud Run instances requires either a single maximum instance or a shared cache and lock such as Redis.
 
-If NASA is temporarily unavailable after the ten-minute cache window expires, the API preserves and returns the last successful dataset instead of emptying the map. `X-Data-Stale` and `X-Data-Age-Seconds` response headers let the React client show a visible age warning while keeping the established JSON response shapes unchanged.
+If NASA is temporarily unavailable after the one-hour cache window expires, the API preserves and returns the last successful dataset instead of emptying the map. `X-Data-Stale` and `X-Data-Age-Seconds` response headers let the React client show a visible age warning while keeping the established JSON response shapes unchanged.
 
 ## Intelligent Fire Clustering
 

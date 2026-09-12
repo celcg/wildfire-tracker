@@ -136,9 +136,9 @@ class FireEndpointsTest(unittest.TestCase):
         read_csv.assert_called_once()
         self.assertTrue(all(len(result) == len(SAMPLE_FIRES) for result in results))
 
-    def test_nasa_data_can_refresh_after_ten_minutes(self):
+    def test_nasa_data_can_refresh_after_one_hour(self):
         with patch.object(config, "NASA_KEY", "test-key"):
-            with patch("fire_data.monotonic", side_effect=[0, 0, 600, 600]):
+            with patch("fire_data.monotonic", side_effect=[0, 0, 3600, 3600]):
                 with patch("fire_data.pd.read_csv", return_value=SAMPLE_FIRES) as read_csv:
                     fire_data.fetch_fires(days=1)
                     fire_data.fetch_fires(days=1)
@@ -149,7 +149,7 @@ class FireEndpointsTest(unittest.TestCase):
         with patch.object(config, "NASA_KEY", "test-key"):
             with patch(
                 "fire_data.monotonic",
-                side_effect=[0, 0, 600, 600, 601, 601],
+                side_effect=[0, 0, 3600, 3600, 3601, 3601],
             ):
                 with patch(
                     "fire_data.pd.read_csv",
