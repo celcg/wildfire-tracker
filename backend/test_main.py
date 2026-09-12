@@ -170,6 +170,80 @@ class FireEndpointsTest(unittest.TestCase):
         self.assertGreaterEqual(stale_fires.attrs["data_age_seconds"], 0)
         self.assertTrue(repeated_stale_fires.attrs["data_stale"])
 
+    def test_empty_cache_retries_nasa_after_initial_backoff(self):
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch.object(
+                config,
+                "NASA_BACKOFF_INITIAL_SECONDS",
+                60,
+                create=True,
+            ):
+                with patch.object(
+                    config,
+                    "NASA_BACKOFF_MAX_SECONDS",
+                    15 * 60,
+                    create=True,
+                ):
+                    with patch(
+                        "fire_data.monotonic",
+                        side_effect=[0, 0, 30, 30, 60, 60],
+                    ):
+                        with patch(
+                            "fire_data.pd.read_csv",
+                            side_effect=RuntimeError("NASA unavailable"),
+                        ) as read_csv:
+                            with self.assertRaises(HTTPException) as first:
+                                fire_data.fetch_fires(days=1)
+                            with self.assertRaises(HTTPException) as throttled:
+                                fire_data.fetch_fires(days=1)
+                            with self.assertRaises(HTTPException) as retried:
+                                fire_data.fetch_fires(days=1)
+
+        self.assertEqual(first.exception.status_code, 502)
+        self.assertEqual(throttled.exception.status_code, 503)
+        self.assertEqual(throttled.exception.headers["Retry-After"], "31")
+        self.assertEqual(retried.exception.status_code, 502)
+        self.assertEqual(retried.exception.headers["Retry-After"], "120")
+        self.assertEqual(read_csv.call_count, 2)
+
+    def test_empty_cache_backoff_doubles_until_the_configured_cap(self):
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch.object(config, "NASA_BACKOFF_INITIAL_SECONDS", 10):
+                with patch.object(config, "NASA_BACKOFF_MAX_SECONDS", 25):
+                    with patch(
+                        "fire_data.monotonic",
+                        side_effect=[0, 0, 10, 10, 30, 30, 55, 55],
+                    ):
+                        with patch(
+                            "fire_data.pd.read_csv",
+                            side_effect=RuntimeError("NASA unavailable"),
+                        ) as read_csv:
+                            retry_delays = []
+                            for _attempt in range(4):
+                                with self.assertRaises(HTTPException) as failure:
+                                    fire_data.fetch_fires(days=1)
+                                retry_delays.append(
+                                    int(failure.exception.headers["Retry-After"])
+                                )
+
+        self.assertEqual(retry_delays, [10, 20, 25, 25])
+        self.assertEqual(read_csv.call_count, 4)
+
+    def test_successful_cold_retry_resets_failure_backoff(self):
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch("fire_data.monotonic", side_effect=[0, 0, 60, 60]):
+                with patch(
+                    "fire_data.pd.read_csv",
+                    side_effect=[RuntimeError("NASA unavailable"), SAMPLE_FIRES],
+                ) as read_csv:
+                    with self.assertRaises(HTTPException):
+                        fire_data.fetch_fires(days=1)
+                    recovered = fire_data.fetch_fires(days=1)
+
+        self.assertEqual(read_csv.call_count, 2)
+        self.assertEqual(len(recovered), len(SAMPLE_FIRES))
+        self.assertNotIn(1, fire_data._nasa_failure_backoff)
+
     def test_rate_limit_rejects_the_eleventh_request(self):
         request = Request(
             {
