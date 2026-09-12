@@ -1,6 +1,7 @@
 """Application configuration with no web or data-access responsibilities."""
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -33,6 +34,20 @@ FIRE_COLUMNS = [
 CACHE_TTL_SECONDS = 60 * 60
 RATE_LIMIT_REQUESTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
+
+# Local logs are useful during development, while Cloud Run should write only
+# to stdout because its writable filesystem is ephemeral and consumes memory.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_TO_FILE = os.getenv(
+    "LOG_TO_FILE",
+    "false" if os.getenv("K_SERVICE") else "true",
+).lower() in {"1", "true", "yes", "on"}
+LOG_FILE_PATH = os.getenv(
+    "LOG_FILE_PATH",
+    str(Path(__file__).resolve().parent / "logs" / "wildfire-api.log"),
+)
+LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024)))
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
 
 # Clusters link detections only when they are close in both space and time.
 # Keeping these server-owned avoids presenting arbitrary tuning as user choice.

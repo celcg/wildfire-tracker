@@ -1,12 +1,14 @@
 """NASA FIRMS access and the process-local fire-data cache."""
 
+import logging
 from threading import Lock
-from time import monotonic
+from time import monotonic, perf_counter
 
 import pandas as pd
 from fastapi import HTTPException
 
 import config
+from logging_config import get_logger, log_event
 
 
 # A lock makes the cache safe when FastAPI serves synchronous routes in threads.
@@ -19,6 +21,7 @@ _last_nasa_attempt: dict[int, float] = {}
 
 DATA_STALE_ATTR = "data_stale"
 DATA_AGE_SECONDS_ATTR = "data_age_seconds"
+logger = get_logger("fire_data")
 
 
 def clear_fire_cache() -> None:
@@ -91,7 +94,17 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
 
     cached_fires = _get_cached_fires(days, monotonic())
     if _is_fresh(cached_fires):
+        log_event(logger, logging.INFO, "cache.hit", days=days)
         return cached_fires
+
+    log_event(
+        logger,
+        logging.INFO,
+        "cache.miss",
+        days=days,
+        stale_available=cached_fires is not None,
+        force_refresh=force_refresh,
+    )
 
     # Recheck after acquiring the lock: another request may have populated the
     # cache while this request was waiting.
@@ -99,6 +112,7 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
         now = monotonic()
         cached_fires = _get_cached_fires(days, now)
         if _is_fresh(cached_fires):
+            log_event(logger, logging.INFO, "cache.hit_after_wait", days=days)
             return cached_fires
 
         last_attempt = _last_nasa_attempt.get(days)
@@ -107,21 +121,54 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
             and now - last_attempt < config.CACHE_TTL_SECONDS
         ):
             if cached_fires is not None:
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    "cache.stale_served",
+                    days=days,
+                    reason="refresh_throttled",
+                )
                 return cached_fires
+            retry_after = _retry_after(last_attempt, now)
+            log_event(
+                logger,
+                logging.WARNING,
+                "nasa.refresh_throttled",
+                days=days,
+                retry_after_seconds=retry_after,
+            )
             raise HTTPException(
                 status_code=503,
                 detail="NASA FIRMS refresh is temporarily throttled",
-                headers={"Retry-After": str(_retry_after(last_attempt, now))},
+                headers={"Retry-After": str(retry_after)},
             )
 
         # Record attempts, not only successes, so an upstream outage cannot
         # turn a burst of refresh clicks into repeated NASA requests.
         _last_nasa_attempt[days] = now
+        fetch_started_at = perf_counter()
+        log_event(logger, logging.INFO, "nasa.fetch_started", days=days)
 
         try:
             fires = pd.read_csv(_build_firms_url(days))[config.FIRE_COLUMNS]
         except Exception as exc:
+            log_event(
+                logger,
+                logging.WARNING,
+                "nasa.fetch_failed",
+                days=days,
+                duration_ms=round((perf_counter() - fetch_started_at) * 1000, 2),
+                error_type=type(exc).__name__,
+                stale_available=cached_fires is not None,
+            )
             if cached_fires is not None:
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    "cache.stale_served",
+                    days=days,
+                    reason="upstream_error",
+                )
                 return cached_fires
             # Never expose the upstream URL because it contains the NASA API key.
             raise HTTPException(
@@ -130,6 +177,14 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
             ) from exc
 
         _store_fires(days, fires, now)
+        log_event(
+            logger,
+            logging.INFO,
+            "nasa.fetch_succeeded",
+            days=days,
+            duration_ms=round((perf_counter() - fetch_started_at) * 1000, 2),
+            row_count=len(fires),
+        )
         return _with_cache_metadata(fires, age_seconds=0, is_stale=False)
 
 

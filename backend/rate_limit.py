@@ -1,5 +1,6 @@
 """Small process-local sliding-window limiter for public data endpoints."""
 
+import logging
 from collections import defaultdict, deque
 from threading import Lock
 from time import monotonic
@@ -7,6 +8,10 @@ from time import monotonic
 from fastapi import HTTPException, Request
 
 from config import RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS
+from logging_config import get_logger, log_event
+
+
+logger = get_logger("rate_limit")
 
 
 class SlidingWindowRateLimiter:
@@ -29,10 +34,19 @@ class SlidingWindowRateLimiter:
             self._discard_expired(timestamps, now)
 
             if len(timestamps) >= self._request_limit:
+                retry_after = self._retry_after(timestamps, now)
+                # Deliberately omit the client host: request correlation is
+                # enough for diagnostics and avoids retaining visitor data.
+                log_event(
+                    logger,
+                    logging.WARNING,
+                    "rate_limit.rejected",
+                    retry_after_seconds=retry_after,
+                )
                 raise HTTPException(
                     status_code=429,
                     detail="Rate limit exceeded. Please try again later.",
-                    headers={"Retry-After": str(self._retry_after(timestamps, now))},
+                    headers={"Retry-After": str(retry_after)},
                 )
 
             timestamps.append(now)
