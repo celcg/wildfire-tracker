@@ -5,6 +5,7 @@ import { ControlDeck } from "./components/ControlDeck";
 import { FireMap } from "./components/FireMap";
 import { Hero } from "./components/Hero";
 import { IncidentSummary } from "./components/IncidentSummary";
+import { PrivacyNotice } from "./components/PrivacyNotice";
 import { StaleDataNotice } from "./components/StaleDataNotice";
 import { DEFAULT_OBSERVATION_DAYS } from "./config/fireConfig";
 import { useFireData } from "./hooks/useFireData";
@@ -123,9 +124,13 @@ function App() {
         layer={layer}
       />
 
+      <PrivacyNotice />
+
       <footer className="site-footer">
         <span>Environmental intelligence through open data</span>
-        <span>Data source · NASA FIRMS</span>
+        <span>
+          Data source · NASA FIRMS · <a href="#privacy">Privacy</a>
+        </span>
       </footer>
     </main>
   );
