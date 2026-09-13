@@ -8,7 +8,9 @@ from uuid import UUID, uuid4
 from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from client_identity import CLIENT_ID_HEADER
 from config import ALLOWED_ORIGINS
+from firebase_security import APP_CHECK_HEADER
 from fire_data import (
     DATA_AGE_SECONDS_ATTR,
     DATA_STALE_ATTR,
@@ -164,7 +166,13 @@ def create_app() -> FastAPI:
         allow_origins=ALLOWED_ORIGINS,
         allow_credentials=False,
         allow_methods=["GET"],
-        allow_headers=["Accept", "Content-Type", REQUEST_ID_HEADER],
+        allow_headers=[
+            "Accept",
+            "Content-Type",
+            REQUEST_ID_HEADER,
+            CLIENT_ID_HEADER,
+            APP_CHECK_HEADER,
+        ],
         expose_headers=[
             "X-Data-Stale",
             "X-Data-Age-Seconds",

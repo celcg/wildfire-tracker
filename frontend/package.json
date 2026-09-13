@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node --test src/config/fireConfig.test.js src/domain/incidentPresentation.test.js src/services/cacheStorage.test.js src/services/fireApi.test.js",
+    "test": "node --test src/config/fireConfig.test.js src/config/firebaseConfig.test.js src/domain/incidentPresentation.test.js src/services/cacheStorage.test.js src/services/clientIdentity.test.js src/services/fireApi.test.js src/services/requestSecurity.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

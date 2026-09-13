@@ -22,8 +22,10 @@ export function PrivacyNotice() {
           <h3>On this device</h3>
           <p>
             Recent fire data and synchronization times are cached in browser
-            local storage for up to two hours. You can remove them by clearing
-            this site&apos;s data in your browser.
+            local storage for up to two hours. A random installation identifier
+            is also stored there to apply fair request limits without logging
+            your IP address. It is not an account and you can remove it by
+            clearing this site&apos;s data in your browser.
           </p>
         </section>
 
@@ -39,6 +41,8 @@ export function PrivacyNotice() {
           <p>
             These providers may receive technical metadata such as an IP
             address, browser information, request time, and requested resource.
+            Firebase App Check also verifies that API requests originate from
+            the published application.
           </p>
         </section>
 

@@ -23,7 +23,7 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Explainable spatiotemporal grouping into possible fire clusters
 - Switchable detection and cluster layers with aggregate FRP insights
 - Two-hour browser cache with an explicit manual refresh action
-- One-hour NASA request protection and a conservative 10-request-per-minute limit
+- Shared five-request token bucket per anonymous browser installation
 - Exponential NASA retry backoff when a cold API instance has no cached data
 - Stale-if-error fallback that keeps the last map visible with its data age
 
@@ -36,13 +36,16 @@ flowchart LR
     subgraph Firebase["Frontend · Firebase Hosting"]
         UI[React + React Leaflet] --> Hooks[Data hooks]
         Hooks <--> BrowserCache["localStorage cache · 2 h"]
-        Hooks --> Client["API service · X-Request-ID"]
+        Hooks --> Client["API service · request + anonymous client IDs"]
+        Identity["Installation UUID · localStorage"] --> Client
+        AppCheck[Firebase App Check] --> Client
     end
 
     Client -->|HTTPS / JSON| Middleware
 
     subgraph CloudRun["Backend · Google Cloud Run"]
-        Middleware["FastAPI middleware · CORS + request logging"] --> Limiter["Rate limiter · 10 requests/min/observed host"]
+        Middleware["FastAPI middleware · CORS + request logging"] --> Attestation["App Check + UUID validation"]
+        Attestation --> Limiter["Token bucket · 5 requests/min/client"]
         Limiter --> Routes["/fires · /stats · /incidents"]
         Routes --> ServerCache["NASA access · 1 h cache + cold-start backoff"]
         Routes --> Clustering[Spatiotemporal clustering]
@@ -50,7 +53,8 @@ flowchart LR
     end
 
     ServerCache -->|"Coalesced refresh · max once/hour/instance"| NASA[NASA FIRMS]
-    Secrets[Google Secret Manager] -. "injects NASA_KEY" .-> ServerCache
+    Limiter <--> Firestore["Firestore · shared atomic buckets"]
+    Secrets[Google Secret Manager] -. "NASA_KEY + HMAC secret" .-> CloudRun
     Middleware --> AppLogs
     Limiter --> AppLogs
     ServerCache --> AppLogs
@@ -63,11 +67,12 @@ flowchart LR
 
 The frontend and API deploy independently. A manual refresh bypasses the
 two-hour browser cache, but never the backend's one-hour NASA protection
-window. The API cache, refresh lock, and rate limiter are process-local to each
-Cloud Run instance; stale data remains available when NASA fails. React and
-FastAPI correlate requests with `X-Request-ID`, while logs exclude payloads,
-coordinates, visitor IPs, and secret values. Production logs go to Cloud
-Logging; bounded rotating files are used only during local development.
+window. The NASA cache and refresh lock remain process-local, while Firestore
+shares rate-limit state across Cloud Run instances. React and FastAPI correlate
+requests with `X-Request-ID`; a separate installation UUID is HMAC-hashed before
+it becomes a Firestore key. Logs exclude UUIDs, payloads, coordinates, visitor
+IPs, and secret values. Production logs go to Cloud Logging; bounded rotating
+files are used only during local development.
 
 ## Tech Stack + Why
 
@@ -78,6 +83,8 @@ Logging; bounded rotating files are used only during local development.
 - **Pandas:** convenient parsing and transformation of the CSV responses returned by NASA FIRMS.
 - **NASA FIRMS:** authoritative near-real-time satellite fire-detection data.
 - **Firebase Hosting:** simple, globally distributed hosting for the static frontend.
+- **Firebase App Check:** attests that public API requests originate from the deployed web application.
+- **Cloud Firestore:** provides atomic, shared token buckets across stateless Cloud Run instances.
 - **Google Cloud Run:** managed, scalable hosting for the Python API with environment-based secret configuration.
 - **Secret Manager:** keeps the NASA key outside source code and literal Cloud Run environment values while preserving the established `NASA_KEY` runtime interface.
 
@@ -122,6 +129,8 @@ Create `backend/.env` and provide a valid NASA FIRMS key:
 
 ```env
 NASA_KEY=your_nasa_firms_key
+# Optional locally; production receives a separate value from Secret Manager.
+CLIENT_ID_HASH_SECRET=replace_with_a_random_secret
 ```
 
 Start the API:
@@ -140,6 +149,16 @@ npm install
 npm run dev
 ```
 
+Without the public Firebase settings in `frontend/.env.example`, local
+development sends the installation UUID but deliberately skips App Check;
+Cloud Run requires a valid token. Local App Check testing must use Firebase's
+debug-token workflow rather than registering `localhost` on the production
+reCAPTCHA key.
+
+`CLIENT_ID_REQUIRED` and `APP_CHECK_REQUIRED` are temporary rollout controls.
+Both remain enabled in the final production configuration; they may be disabled
+only while an older frontend is being replaced.
+
 ## API Overview
 
 ```http
@@ -155,9 +174,22 @@ GET /incidents?days=3&refresh=true
 
 Using a `days` query parameter keeps the resource-oriented API extensible and avoids creating separate endpoints for every supported time window.
 
-Setting `refresh=true` explicitly bypasses browser-held data, but it does not bypass the API's one-hour NASA protection window. Concurrent cache misses are coalesced so only one request per API instance reaches NASA. Data endpoints are limited to 10 requests per minute per observed transport peer and return `429 Too Many Requests` with a `Retry-After` header when that limit is exceeded.
+Setting `refresh=true` explicitly bypasses browser-held data, but it does not bypass the API's one-hour NASA protection window. Concurrent cache misses are coalesced so only one request per API instance reaches NASA.
 
-The lightweight limiter and server cache are process-local. `request.client.host` identifies the rate-limit bucket; behind a managed proxy this can intentionally become a shared bucket rather than a reliable end-user identity. A strict service-wide NASA limit across multiple Cloud Run instances requires either a single maximum instance or a shared cache and lock such as Redis.
+Each browser installation creates one random UUID in versioned `localStorage`
+and sends it as `X-Client-ID`. FastAPI accepts canonical UUIDs only, converts
+them to an HMAC-SHA256 key using a Secret Manager value, and never logs the UUID
+or visitor IP. Firebase App Check is additionally required in Cloud Run through
+`X-Firebase-AppCheck`; this validates the calling application, not a person's
+identity.
+
+Firestore stores an atomic token bucket per HMAC key with five tokens and a
+refill rate of one token every 12 seconds. All API instances therefore share a
+five-request-per-minute sustained limit, while a wider in-memory guard protects
+each instance if Firestore is unavailable. Rejections return `429 Too Many
+Requests` with `Retry-After`. A continuously active client can consume up to
+7,200 accepted writes per day; the free Firestore allowance is 20,000 writes
+and 50,000 reads per day, so usage must be monitored as traffic grows.
 
 If NASA is temporarily unavailable after the one-hour cache window expires, the API preserves the last successful dataset instead of emptying the map. `X-Data-Stale` and `X-Data-Age-Seconds` response headers let the React client show a visible age warning while keeping the established JSON response shapes unchanged. A cold instance with no cached dataset retries NASA after 1, 2, 4, and 8 minutes, then caps the exponential backoff at 15 minutes until a request succeeds.
 

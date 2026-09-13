@@ -27,8 +27,9 @@ def _sanitize(value: object) -> object:
         return value
 
     text = str(value)
-    if config.NASA_KEY:
-        text = text.replace(config.NASA_KEY, "[REDACTED]")
+    for secret in (config.NASA_KEY, config.CLIENT_ID_HASH_SECRET):
+        if secret:
+            text = text.replace(secret, "[REDACTED]")
     return _control_characters.sub(" ", text)[:1000]
 
 
