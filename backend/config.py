@@ -51,7 +51,8 @@ LOG_FILE_PATH = os.getenv(
     str(Path(__file__).resolve().parent / "logs" / "wildfire-api.log"),
 )
 LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024)))
-LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+# One active 5 MiB file plus 19 backups bounds local logs to about 100 MiB.
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "19"))
 
 # Clusters link detections only when they are close in both space and time.
 # Keeping these server-owned avoids presenting arbitrary tuning as user choice.
