@@ -36,8 +36,41 @@ CACHE_TTL_SECONDS = 60 * 60
 # while the cap prevents an outage from causing sustained upstream traffic.
 NASA_BACKOFF_INITIAL_SECONDS = 60
 NASA_BACKOFF_MAX_SECONDS = 15 * 60
-RATE_LIMIT_REQUESTS = 10
-RATE_LIMIT_WINDOW_SECONDS = 60
+# Anonymous clients are identified by an opaque browser-installation UUID. The
+# HMAC secret keeps that identifier out of Firestore document names and logs.
+IS_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
+CLIENT_ID_HASH_SECRET = os.getenv(
+    "CLIENT_ID_HASH_SECRET",
+    "wildfire-local-development-only" if not IS_CLOUD_RUN else "",
+)
+APP_CHECK_REQUIRED = os.getenv(
+    "APP_CHECK_REQUIRED",
+    "true" if IS_CLOUD_RUN else "false",
+).lower() in {"1", "true", "yes", "on"}
+# This switch exists only to support a zero-downtime rollout from older clients.
+# Production keeps it enabled after the updated frontend has been published.
+CLIENT_ID_REQUIRED = os.getenv(
+    "CLIENT_ID_REQUIRED",
+    "true" if IS_CLOUD_RUN else "false",
+).lower() in {"1", "true", "yes", "on"}
+RATE_LIMIT_BACKEND = os.getenv(
+    "RATE_LIMIT_BACKEND",
+    "firestore" if IS_CLOUD_RUN else "memory",
+).lower()
+FIRESTORE_PROJECT_ID = os.getenv("FIRESTORE_PROJECT_ID")
+TOKEN_BUCKET_CAPACITY = int(os.getenv("TOKEN_BUCKET_CAPACITY", "5"))
+TOKEN_BUCKET_REFILL_SECONDS = float(
+    os.getenv("TOKEN_BUCKET_REFILL_SECONDS", "12")
+)
+TOKEN_BUCKET_STATE_TTL_SECONDS = int(
+    os.getenv("TOKEN_BUCKET_STATE_TTL_SECONDS", str(24 * 60 * 60))
+)
+# A wider process-local guard absorbs repeated clicks and protects Firestore
+# during outages; the shared token bucket remains the authoritative limit.
+LOCAL_GUARD_CAPACITY = int(os.getenv("LOCAL_GUARD_CAPACITY", "20"))
+LOCAL_GUARD_REFILL_SECONDS = float(
+    os.getenv("LOCAL_GUARD_REFILL_SECONDS", "3")
+)
 
 # Local logs are useful during development, while Cloud Run should write only
 # to stdout because its writable filesystem is ephemeral and consumes memory.

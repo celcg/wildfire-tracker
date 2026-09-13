@@ -72,22 +72,30 @@ class LoggingConfigurationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             log_path = Path(temporary_directory) / "wildfire-api.log"
             with patch.object(config, "NASA_KEY", "super-secret-key"):
-                configure_logging(
-                    log_to_file=True,
-                    log_file_path=log_path,
-                    stream=io.StringIO(),
-                )
-                log_event(
-                    get_logger("security_test"),
-                    logging.WARNING,
-                    "security.test",
-                    untrusted="super-secret-key\r\nFORGED_LOG",
-                )
-                configure_logging(log_to_file=False, stream=io.StringIO())
-                contents = log_path.read_text(encoding="utf-8")
+                with patch.object(
+                    config,
+                    "CLIENT_ID_HASH_SECRET",
+                    "client-hmac-secret",
+                ):
+                    configure_logging(
+                        log_to_file=True,
+                        log_file_path=log_path,
+                        stream=io.StringIO(),
+                    )
+                    log_event(
+                        get_logger("security_test"),
+                        logging.WARNING,
+                        "security.test",
+                        untrusted=(
+                            "super-secret-key client-hmac-secret\r\nFORGED_LOG"
+                        ),
+                    )
+                    configure_logging(log_to_file=False, stream=io.StringIO())
+                    contents = log_path.read_text(encoding="utf-8")
 
             self.assertNotIn("super-secret-key", contents)
-            self.assertIn("[REDACTED] FORGED_LOG", contents)
+            self.assertNotIn("client-hmac-secret", contents)
+            self.assertIn("[REDACTED] [REDACTED] FORGED_LOG", contents)
             self.assertEqual(len(contents.splitlines()), 1)
 
     def test_stdout_is_structured_json_with_request_context(self):
@@ -189,6 +197,11 @@ class CorsLoggingContractTest(unittest.TestCase):
 
         self.assertIn(REQUEST_ID_HEADER, cors_middleware.kwargs["allow_headers"])
         self.assertIn(REQUEST_ID_HEADER, cors_middleware.kwargs["expose_headers"])
+        self.assertIn("X-Client-ID", cors_middleware.kwargs["allow_headers"])
+        self.assertIn(
+            "X-Firebase-AppCheck",
+            cors_middleware.kwargs["allow_headers"],
+        )
 
 
 if __name__ == "__main__":

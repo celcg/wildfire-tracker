@@ -1,4 +1,5 @@
 import { API_URL } from "../config/fireConfig.js";
+import { buildRequestSecurityHeaders } from "./requestSecurity.js";
 
 const REQUEST_ID_HEADER = "X-Request-ID";
 
@@ -28,6 +29,7 @@ async function requestJson({ path, errorLabel, signal }) {
   // A per-request identifier lets Cloud Logging connect a UI failure with the
   // exact API and NASA/cache events that produced it.
   const clientRequestId = globalThis.crypto.randomUUID();
+  const securityHeaders = await buildRequestSecurityHeaders();
   let response;
 
   try {
@@ -35,6 +37,7 @@ async function requestJson({ path, errorLabel, signal }) {
       headers: {
         Accept: "application/json",
         [REQUEST_ID_HEADER]: clientRequestId,
+        ...securityHeaders,
       },
       signal,
     });

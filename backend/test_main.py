@@ -244,12 +244,17 @@ class FireEndpointsTest(unittest.TestCase):
         self.assertEqual(len(recovered), len(SAMPLE_FIRES))
         self.assertNotIn(1, fire_data._nasa_failure_backoff)
 
-    def test_rate_limit_rejects_the_eleventh_request(self):
+    def test_rate_limit_rejects_after_shared_bucket_capacity(self):
         request = Request(
             {
                 "type": "http",
                 "client": ("192.0.2.1", 1234),
-                "headers": [],
+                "headers": [
+                    (
+                        b"x-client-id",
+                        b"019b4dc8-e75a-4d97-b0c2-98780b891f28",
+                    )
+                ],
                 "method": "GET",
                 "path": "/fires",
                 "query_string": b"",
@@ -260,7 +265,7 @@ class FireEndpointsTest(unittest.TestCase):
         )
 
         with patch("rate_limit.log_event") as logged_event:
-            for _ in range(config.RATE_LIMIT_REQUESTS):
+            for _ in range(config.TOKEN_BUCKET_CAPACITY):
                 main.enforce_rate_limit(request)
 
             with self.assertRaises(HTTPException) as raised:
@@ -269,14 +274,19 @@ class FireEndpointsTest(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 429)
         self.assertIn("Retry-After", raised.exception.headers)
         self.assertEqual(logged_event.call_args.args[2], "rate_limit.rejected")
+        self.assertNotIn(
+            "019b4dc8-e75a-4d97-b0c2-98780b891f28",
+            repr(logged_event.call_args),
+        )
+        self.assertNotIn("192.0.2.1", repr(logged_event.call_args))
 
-    def test_rate_limit_uses_transport_host_not_source_port(self):
-        def request_from(host: str, port: int) -> Request:
+    def test_rate_limit_uses_anonymous_client_id_instead_of_transport_host(self):
+        def request_from(client_id: str, host: str) -> Request:
             return Request(
                 {
                     "type": "http",
-                    "client": (host, port),
-                    "headers": [],
+                    "client": (host, 1234),
+                    "headers": [(b"x-client-id", client_id.encode("ascii"))],
                     "method": "GET",
                     "path": "/fires",
                     "query_string": b"",
@@ -286,14 +296,16 @@ class FireEndpointsTest(unittest.TestCase):
                 }
             )
 
-        for port in range(config.RATE_LIMIT_REQUESTS):
-            main.enforce_rate_limit(request_from("192.0.2.1", 10_000 + port))
+        first_id = "019b4dc8-e75a-4d97-b0c2-98780b891f28"
+        second_id = "8ab903b2-b125-4933-8e3f-1cb076be4fb9"
+        for index in range(config.TOKEN_BUCKET_CAPACITY):
+            main.enforce_rate_limit(request_from(first_id, f"192.0.2.{index}"))
 
         with self.assertRaises(HTTPException):
-            main.enforce_rate_limit(request_from("192.0.2.1", 20_000))
+            main.enforce_rate_limit(request_from(first_id, "198.51.100.1"))
 
-        # A different observed host receives an independent bucket.
-        main.enforce_rate_limit(request_from("198.51.100.8", 20_000))
+        # A different installation gets an independent bucket on the same IP.
+        main.enforce_rate_limit(request_from(second_id, "198.51.100.1"))
 
 
 if __name__ == "__main__":

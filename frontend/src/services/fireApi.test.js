@@ -30,8 +30,10 @@ test("returns stale-data metadata exposed by the API", async () => {
 
 test("sends a unique request ID and keeps the ID returned by the API", async () => {
   const receivedIds = [];
+  const receivedClientIds = [];
   globalThis.fetch = async (_url, options) => {
     receivedIds.push(options.headers["X-Request-ID"]);
+    receivedClientIds.push(options.headers["X-Client-ID"]);
     return new Response(JSON.stringify([]), {
       headers: { "X-Request-ID": "419a80bf-3498-4e90-8b47-cf929c637caa" },
     });
@@ -42,6 +44,8 @@ test("sends a unique request ID and keeps the ID returned by the API", async () 
 
   assert.match(receivedIds[0], /^[0-9a-f-]{36}$/);
   assert.notEqual(receivedIds[0], receivedIds[1]);
+  assert.match(receivedClientIds[0], /^[0-9a-f-]{36}$/);
+  assert.equal(receivedClientIds[0], receivedClientIds[1]);
   assert.equal(first.requestId, "419a80bf-3498-4e90-8b47-cf929c637caa");
 });
 

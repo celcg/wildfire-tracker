@@ -1,75 +1,93 @@
-"""Small process-local sliding-window limiter for public data endpoints."""
+"""Anonymous, privacy-preserving rate limiting for public data endpoints."""
 
 import logging
-from collections import defaultdict, deque
-from threading import Lock
-from time import monotonic
+from time import time
 
 from fastapi import HTTPException, Request
 
-from config import RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS
+import config
+from client_identity import resolve_client_key
+from firebase_security import enforce_app_check
 from logging_config import get_logger, log_event
+from rate_limit_store import FirestoreTokenBucketStore, InMemoryTokenBucketStore
 
 
 logger = get_logger("rate_limit")
 
 
-class SlidingWindowRateLimiter:
-    """Thread-safe limiter with one timestamp queue per observed client."""
+def _new_store():
+    store_type = (
+        FirestoreTokenBucketStore
+        if config.RATE_LIMIT_BACKEND == "firestore"
+        else InMemoryTokenBucketStore
+    )
+    return store_type(
+        capacity=config.TOKEN_BUCKET_CAPACITY,
+        refill_seconds=config.TOKEN_BUCKET_REFILL_SECONDS,
+        state_ttl_seconds=config.TOKEN_BUCKET_STATE_TTL_SECONDS,
+    )
 
-    def __init__(self, request_limit: int, window_seconds: int) -> None:
-        self._request_limit = request_limit
-        self._window_seconds = window_seconds
-        self._request_history: dict[str, deque[float]] = defaultdict(deque)
-        self._lock = Lock()
+
+class AnonymousRateLimiter:
+    """Combine a shared limiter with a wider process-local safety guard."""
+
+    def __init__(self, store=None) -> None:
+        self.store = store or _new_store()
+        self.local_guard = InMemoryTokenBucketStore(
+            capacity=config.LOCAL_GUARD_CAPACITY,
+            refill_seconds=config.LOCAL_GUARD_REFILL_SECONDS,
+            state_ttl_seconds=config.TOKEN_BUCKET_STATE_TTL_SECONDS,
+        )
 
     def enforce(self, request: Request) -> None:
-        # Use the transport peer instead of trusting a spoofable forwarded header.
-        # Behind a managed proxy this intentionally behaves as a shared bucket.
-        client_host = request.client.host if request.client else "unknown"
-        now = monotonic()
+        enforce_app_check(request)
+        client_key = resolve_client_key(request)
+        now = time()
 
-        with self._lock:
-            timestamps = self._request_history[client_host]
-            self._discard_expired(timestamps, now)
+        guard_decision = self.local_guard.consume(client_key, now)
+        if not guard_decision.allowed:
+            self._reject(guard_decision.retry_after, source="local_guard")
 
-            if len(timestamps) >= self._request_limit:
-                retry_after = self._retry_after(timestamps, now)
-                # Deliberately omit the client host: request correlation is
-                # enough for diagnostics and avoids retaining visitor data.
-                log_event(
-                    logger,
-                    logging.WARNING,
-                    "rate_limit.rejected",
-                    retry_after_seconds=retry_after,
-                )
-                raise HTTPException(
-                    status_code=429,
-                    detail="Rate limit exceeded. Please try again later.",
-                    headers={"Retry-After": str(retry_after)},
-                )
+        try:
+            decision = self.store.consume(client_key, now)
+        except Exception as exc:
+            # The already-consumed local guard keeps a bounded fallback when
+            # Firestore is temporarily unavailable.
+            log_event(
+                logger,
+                logging.ERROR,
+                "rate_limit.store_unavailable",
+                error_type=type(exc).__name__,
+            )
+            return
 
-            timestamps.append(now)
+        if not decision.allowed:
+            self._reject(decision.retry_after, source="shared_bucket")
+
+    @staticmethod
+    def _reject(retry_after: int, source: str) -> None:
+        log_event(
+            logger,
+            logging.WARNING,
+            "rate_limit.rejected",
+            source=source,
+            retry_after_seconds=retry_after,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please try again later.",
+            headers={"Retry-After": str(retry_after)},
+        )
 
     def reset(self) -> None:
-        """Clear all counters so tests do not share rate-limit state."""
-        with self._lock:
-            self._request_history.clear()
-
-    def _discard_expired(self, timestamps: deque[float], now: float) -> None:
-        while timestamps and now - timestamps[0] >= self._window_seconds:
-            timestamps.popleft()
-
-    def _retry_after(self, timestamps: deque[float], now: float) -> int:
-        return max(1, int(self._window_seconds - (now - timestamps[0])) + 1)
+        for store in (self.store, self.local_guard):
+            reset = getattr(store, "reset", None)
+            if reset:
+                reset()
 
 
-rate_limiter = SlidingWindowRateLimiter(
-    request_limit=RATE_LIMIT_REQUESTS,
-    window_seconds=RATE_LIMIT_WINDOW_SECONDS,
-)
+rate_limiter = AnonymousRateLimiter()
 
 
 def enforce_rate_limit(request: Request) -> None:
-    """FastAPI dependency adapter keeps the limiter independent of route code."""
     rate_limiter.enforce(request)
