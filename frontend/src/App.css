@@ -858,6 +858,89 @@ h2 {
   font-size: 0.72rem;
 }
 
+/* Privacy trace -----------------------------------------------------------
+   A native disclosure keeps legal context available without obscuring data. */
+.privacy-notice {
+  margin-top: 28px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--mint-300);
+  background: rgba(18, 11, 8, 0.58);
+}
+
+.privacy-notice summary {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 18px;
+  color: var(--mist-100);
+  font-family: var(--font-display);
+  cursor: pointer;
+}
+
+.privacy-notice summary small {
+  color: var(--mint-300);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.privacy-notice summary:focus-visible,
+.privacy-notice a:focus-visible,
+.site-footer a:focus-visible {
+  outline: 2px solid var(--cyan-300);
+  outline-offset: 3px;
+}
+
+.privacy-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  padding: 4px 18px 20px;
+  color: var(--mist-300);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.privacy-intro,
+.privacy-contact {
+  grid-column: 1 / -1;
+}
+
+.privacy-content h3 {
+  margin: 0 0 7px;
+  color: var(--mist-100);
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+}
+
+.privacy-content p,
+.privacy-content ul {
+  margin: 0;
+}
+
+.privacy-content ul {
+  padding-left: 17px;
+}
+
+.privacy-content li + li {
+  margin-top: 4px;
+}
+
+.privacy-content a,
+.site-footer a {
+  color: var(--mint-300);
+  text-decoration-color: color-mix(in srgb, var(--mint-300), transparent 45%);
+  text-underline-offset: 3px;
+}
+
+.privacy-contact {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
 /* Provenance ---------------------------------------------------------------
    Data attribution stays visible without competing with the live map. */
 .site-footer {
@@ -939,6 +1022,8 @@ h2 {
   .key-level { border-bottom: 1px solid var(--line); }
   .key-level:nth-last-child(-n + 2) { border-bottom: 0; }
   .guide-content { padding-inline: 16px; }
+  .privacy-notice summary { align-items: flex-start; flex-direction: column; gap: 4px; padding-block: 14px; }
+  .privacy-content { grid-template-columns: 1fr; padding-inline: 16px; }
   .site-footer { align-items: flex-start; flex-direction: column; gap: 8px; }
 }
 

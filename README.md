@@ -55,7 +55,7 @@ flowchart LR
     Limiter --> AppLogs
     ServerCache --> AppLogs
     AppLogs -->|Structured JSON / stdout| CloudLogging[Cloud Logging]
-    AppLogs -. "Local only · rotating 5 MiB × 6 files" .-> LocalLogs[Local log files]
+    AppLogs -. "Local only · rotating 5 MiB × 20 files" .-> LocalLogs[Local log files]
 
     BackendTests["Backend · unittest"] -. validates .-> CloudRun
     FrontendTests["Frontend · Node tests + Oxlint + Vite build"] -. validates .-> Firebase
@@ -91,8 +91,9 @@ bodies, fire coordinates, response payloads, or the secret-bearing NASA URL.
 
 In local development, readable UTC-timestamped logs are written to
 `backend/logs/wildfire-api.log`. The active file rotates at 5 MiB and retains
-five backups (`.log.1` through `.log.5`), bounding the default footprint to
-approximately 30 MiB. The entire directory is excluded from Git.
+19 backups (`.log.1` through `.log.19`), bounding the default footprint to
+approximately 100 MiB. On the next rotation, the oldest backup is deleted.
+The entire directory is excluded from Git.
 
 Cloud Run does not use local log files because its writable filesystem is
 ephemeral. Production emits one structured JSON object per line to `stdout`,
@@ -107,7 +108,7 @@ logging behavior without code changes:
 | `LOG_TO_FILE` | `true` locally, `false` on Cloud Run | Enable the rotating file handler |
 | `LOG_FILE_PATH` | `backend/logs/wildfire-api.log` | Override the local destination |
 | `LOG_MAX_BYTES` | `5242880` | Rotate after approximately 5 MiB |
-| `LOG_BACKUP_COUNT` | `5` | Number of rotated files retained |
+| `LOG_BACKUP_COUNT` | `19` | Rotated backups retained (20 files including the active log) |
 
 Log fields are allowlisted and control characters are neutralized to prevent
 log injection. The NASA key is defensively redacted at the formatter boundary,

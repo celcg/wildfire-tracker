@@ -29,6 +29,12 @@ class LoggingConfigurationTest(unittest.TestCase):
         # leave later tests with a harmless in-memory console handler.
         configure_logging(log_to_file=False, stream=io.StringIO())
 
+    def test_default_rotation_budget_is_one_hundred_mib(self):
+        # The active file counts toward the total alongside every retained backup.
+        total_capacity = config.LOG_MAX_BYTES * (config.LOG_BACKUP_COUNT + 1)
+
+        self.assertEqual(total_capacity, 100 * 1024 * 1024)
+
     def test_writes_utc_timestamps_and_rotates_bounded_files(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             log_path = Path(temporary_directory) / "wildfire-api.log"
