@@ -64,13 +64,26 @@ class IncidentClusteringTest(unittest.TestCase):
         fires = pd.DataFrame(
             [
                 fire(42.100, -8.600, "2026-09-10", 100, 5),
-                fire(42.101, -8.601, "2026-09-10", 1400, 5),
+                fire(42.101, -8.601, "2026-09-11", 200, 5),
             ]
         )
 
         result = cluster_fires(fires, days=1)
 
         self.assertEqual(result.incident_count, 2)
+
+    def test_same_location_across_satellite_passes_remains_one_incident(self):
+        fires = pd.DataFrame(
+            [
+                fire(43.52459, -5.73016, "2026-09-11", 1336, 5),
+                fire(43.52444, -5.73749, "2026-09-12", 152, 5),
+            ]
+        )
+
+        result = cluster_fires(fires, days=3)
+
+        self.assertEqual(result.incident_count, 1)
+        self.assertEqual(result.incidents[0].detection_count, 2)
 
     def test_connected_points_form_a_cluster_transitively(self):
         fires = pd.DataFrame(

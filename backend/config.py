@@ -90,7 +90,7 @@ LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "19"))
 # Clusters link detections only when they are close in both space and time.
 # Keeping these server-owned avoids presenting arbitrary tuning as user choice.
 CLUSTER_RADIUS_KM = 2
-CLUSTER_TIME_WINDOW_HOURS = 12
+CLUSTER_TIME_WINDOW_HOURS = 24
 
 # A small context margin turns one- and two-point groups into visible areas.
 # It is a visualization envelope, not an estimated burned-area perimeter.
