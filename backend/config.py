@@ -87,6 +87,30 @@ LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(5 * 1024 * 1024)))
 # One active 5 MiB file plus 19 backups bounds local logs to about 100 MiB.
 LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "19"))
 
+# BigQuery is an optional analytics sink. Public map requests never depend on
+# it, so an ingestion outage cannot make the operational API unavailable.
+BIGQUERY_ENABLED = os.getenv("BIGQUERY_ENABLED", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+BIGQUERY_PROJECT_ID = os.getenv(
+    "BIGQUERY_PROJECT_ID",
+    "project-d66d4e5f-ee28-4c77-845",
+)
+BIGQUERY_DATASET = os.getenv("BIGQUERY_DATASET", "wildfires")
+BIGQUERY_LOCATION = os.getenv("BIGQUERY_LOCATION", "europe-west1")
+BIGQUERY_MAX_BYTES_BILLED = int(
+    os.getenv("BIGQUERY_MAX_BYTES_BILLED", str(50 * 1024 * 1024))
+)
+# Stop writes before the current 10 GiB free storage allowance is approached.
+BIGQUERY_STORAGE_GUARD_BYTES = int(
+    os.getenv("BIGQUERY_STORAGE_GUARD_BYTES", str(8 * 1024**3))
+)
+SCHEDULER_SERVICE_ACCOUNT = os.getenv("SCHEDULER_SERVICE_ACCOUNT", "")
+SCHEDULER_AUDIENCE = os.getenv("SCHEDULER_AUDIENCE", "")
+
 # Clusters link detections only when they are close in both space and time.
 # Keeping these server-owned avoids presenting arbitrary tuning as user choice.
 CLUSTER_RADIUS_KM = 2
