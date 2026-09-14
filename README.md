@@ -53,6 +53,9 @@ flowchart LR
     end
 
     ServerCache -->|"Coalesced refresh · max once/hour/instance"| NASA[NASA FIRMS]
+    Scheduler[Cloud Scheduler · hourly OIDC] --> Ingest[POST /internal/ingest]
+    Ingest --> ServerCache
+    Ingest --> BigQuery["BigQuery · detections + hourly cluster snapshots"]
     Limiter <--> Firestore["Firestore · shared atomic buckets"]
     Secrets[Google Secret Manager] -. "NASA_KEY + HMAC secret" .-> CloudRun
     Middleware --> AppLogs
@@ -87,6 +90,8 @@ files are used only during local development.
 - **Cloud Firestore:** provides atomic, shared token buckets across stateless Cloud Run instances.
 - **Google Cloud Run:** managed, scalable hosting for the Python API with environment-based secret configuration.
 - **Secret Manager:** keeps the NASA key outside source code and literal Cloud Run environment values while preserving the established `NASA_KEY` runtime interface.
+- **BigQuery:** stores partitioned, one-year analytical history without putting the public map on a data-warehouse dependency.
+- **Cloud Scheduler:** triggers one authenticated, idempotent ingestion each hour.
 
 ## Logging and Request Correlation
 
@@ -170,6 +175,7 @@ GET /fires?days=3&refresh=true
 GET /stats?days=1
 GET /incidents?days=3
 GET /incidents?days=3&refresh=true
+POST /internal/ingest
 ```
 
 Using a `days` query parameter keeps the resource-oriented API extensible and avoids creating separate endpoints for every supported time window.
@@ -197,7 +203,7 @@ If NASA is temporarily unavailable after the one-hour cache window expires, the 
 
 The optional cluster layer turns nearby satellite observations into possible
 fire areas. Two detections are connected when they occur within **2 km** and
-**12 hours** of one another; transitive connections form one component. The
+**24 hours** of one another; transitive connections form one component. The
 implementation uses the Haversine distance and a Union-Find data structure, so
 the method remains lightweight and explainable without adding a machine-learning
 runtime to the Cloud Run image.
@@ -215,3 +221,42 @@ envelope is an explainable visualization aid, not a measured burned perimeter.
 
 Clusters, severity colors, and trends are analytical aids. They are **not
 confirmed wildfire incidents, emergency classifications, or forecasts**.
+
+## Historical Analytics
+
+An OIDC-authenticated Cloud Scheduler job calls the private
+`POST /internal/ingest` route at minute 5 of every UTC hour. The route accepts
+only the configured scheduler service account, requires a fresh 24-hour NASA
+dataset, and never participates in public map requests.
+
+The regional `wildfires` BigQuery dataset contains two one-year, daily
+partitioned tables. `fire_detections` deduplicates physical observations using
+a deterministic SHA-256 ID. `fire_clusters` stores idempotent hourly snapshots,
+including their boundary and member detection IDs. Every detection points to
+its latest `(cluster_id, cluster_snapshot_at)` snapshot; isolated detections
+also receive a one-member cluster. BigQuery does not enforce key constraints,
+so both table updates and the orphan check run in one transaction.
+
+Queries require partition filters and each ingestion job is capped at 50 MiB
+scanned. Before writing, the API reads table metadata and stops ingestion at
+8 GiB of logical storage. This keeps a safety margin below the current 10 GiB
+storage allowance; one hourly job also remains far below the 1 TiB monthly
+query allowance. BigQuery failures are logged but do not interrupt `/fires`,
+`/stats`, or `/incidents`.
+
+Example analytical query:
+
+```sql
+SELECT severity, COUNT(*) AS snapshot_count
+FROM `project-d66d4e5f-ee28-4c77-845.wildfires.fire_clusters`
+WHERE snapshot_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+  AND status = 'active'
+GROUP BY severity
+ORDER BY snapshot_count DESC;
+```
+
+Production configuration uses `BIGQUERY_ENABLED`, `BIGQUERY_PROJECT_ID`,
+`BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, `BIGQUERY_MAX_BYTES_BILLED`,
+`BIGQUERY_STORAGE_GUARD_BYTES`, `SCHEDULER_SERVICE_ACCOUNT`, and
+`SCHEDULER_AUDIENCE`. The schema is versioned in
+`backend/sql/create_bigquery_schema.sql`.

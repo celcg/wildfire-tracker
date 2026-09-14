@@ -18,6 +18,7 @@ from fire_data import (
     summarize_fires,
 )
 from incident_clustering import cluster_fires
+from historical_ingest import IngestionResult, ingest_fire_history
 from logging_config import (
     REQUEST_ID_HEADER,
     bind_request_id,
@@ -28,6 +29,7 @@ from logging_config import (
 )
 from rate_limit import enforce_rate_limit
 from schemas import IncidentCollection
+from scheduler_auth import enforce_scheduler_auth
 
 
 logger = get_logger("http")
@@ -151,6 +153,11 @@ def incidents(
     return cluster_fires(fire_frame, days)
 
 
+def ingest_history() -> IngestionResult:
+    """Run the Scheduler-only analytics ingestion independently of public reads."""
+    return ingest_fire_history()
+
+
 def create_app() -> FastAPI:
     """Build the HTTP boundary while keeping domain services framework-light."""
     configure_logging()
@@ -201,6 +208,14 @@ def create_app() -> FastAPI:
         methods=["GET"],
         response_model=IncidentCollection,
         dependencies=[Depends(enforce_rate_limit)],
+    )
+    application.add_api_route(
+        "/internal/ingest",
+        ingest_history,
+        methods=["POST"],
+        response_model=IngestionResult,
+        dependencies=[Depends(enforce_scheduler_auth)],
+        include_in_schema=False,
     )
     return application
 
