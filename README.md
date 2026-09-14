@@ -235,8 +235,8 @@ a deterministic SHA-256 ID. `fire_clusters` stores idempotent hourly snapshots,
 including their boundary and member detection IDs. Every detection points to
 its latest `(cluster_id, cluster_snapshot_at)` snapshot; isolated detections
 also receive a one-member cluster. BigQuery does not enforce key constraints,
-so the staged relationships are checked and both table updates run atomically
-in one transaction.
+so FastAPI validates every relationship before both table updates run
+atomically in one transaction.
 
 Queries require partition filters and each ingestion job is capped at 50 MiB
 scanned. Before writing, the API reads table metadata and stops ingestion at

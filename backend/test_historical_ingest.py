@@ -1,5 +1,6 @@
 import json
 import unittest
+from dataclasses import replace
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
@@ -13,7 +14,12 @@ from bigquery_repository import (
     BigQueryStorageLimitExceeded,
 )
 from historical_ingest import ingest_fire_history
-from historical_models import build_ingestion_batch, detection_id, snapshot_hour
+from historical_models import (
+    IngestionBatch,
+    build_ingestion_batch,
+    detection_id,
+    snapshot_hour,
+)
 from incident_clustering import cluster_fires
 from scheduler_auth import enforce_scheduler_auth
 
@@ -264,7 +270,13 @@ class BigQueryRepositoryTest(unittest.TestCase):
         client = Mock()
         client.get_table.return_value.num_bytes = 5 * 1024**3
         repository = BigQueryHistoryRepository(client, module)
-        batch = Mock()
+        fires = pd.DataFrame([fire(42.1, -8.6, 900)])
+        batch = build_ingestion_batch(
+            fires,
+            cluster_fires(fires, 1),
+            {},
+            at=AT,
+        )
 
         with self.assertRaises(BigQueryStorageLimitExceeded):
             repository.write_batch(batch)
@@ -290,13 +302,36 @@ class BigQueryRepositoryTest(unittest.TestCase):
         job_config = client.query.call_args.kwargs["job_config"]
         self.assertIn("BEGIN TRANSACTION", sql)
         self.assertIn("COMMIT TRANSACTION", sql)
-        self.assertIn("ASSERT NOT EXISTS", sql)
-        self.assertIn("FROM staged_detections AS detection", sql)
+        self.assertNotIn("CREATE TEMP TABLE", sql)
         self.assertIn("AS FLOAT64", sql)
         self.assertNotIn("FLOAT64(JSON_VALUE", sql)
         self.assertNotIn(batch.detections[0].detection_id, sql)
         self.assertEqual(job_config.maximum_bytes_billed, 50 * 1024 * 1024)
         self.assertEqual(len(job_config.query_parameters), 5)
+
+    def test_orphan_relationship_is_rejected_before_bigquery(self):
+        fires = pd.DataFrame([fire(42.1, -8.6, 900)])
+        batch = build_ingestion_batch(
+            fires,
+            cluster_fires(fires, 1),
+            {},
+            at=AT,
+        )
+        invalid_detection = replace(batch.detections[0], cluster_id="missing")
+        invalid_batch = IngestionBatch(
+            snapshot_at=batch.snapshot_at,
+            detections=(invalid_detection,),
+            clusters=batch.clusters,
+            merged_cluster_ids=batch.merged_cluster_ids,
+        )
+        client = Mock()
+        repository = BigQueryHistoryRepository(client, bigquery)
+
+        with self.assertRaisesRegex(ValueError, "orphan cluster"):
+            repository.write_batch(invalid_batch)
+
+        client.get_table.assert_not_called()
+        client.query.assert_not_called()
 
 
 if __name__ == "__main__":

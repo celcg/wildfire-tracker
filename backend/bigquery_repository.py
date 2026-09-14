@@ -24,6 +24,26 @@ def _validated_identifier(value: str, pattern: re.Pattern[str], label: str) -> s
     return value
 
 
+def _validate_batch_relationships(batch: IngestionBatch) -> None:
+    """Enforce the logical keys that BigQuery only records as metadata."""
+    cluster_keys = [
+        (cluster.cluster_id, cluster.snapshot_at) for cluster in batch.clusters
+    ]
+    if len(cluster_keys) != len(set(cluster_keys)):
+        raise ValueError("Duplicate cluster snapshot key")
+
+    detection_ids = [record.detection_id for record in batch.detections]
+    if len(detection_ids) != len(set(detection_ids)):
+        raise ValueError("Duplicate detection key")
+
+    available_clusters = set(cluster_keys)
+    if any(
+        (record.cluster_id, record.cluster_snapshot_at) not in available_clusters
+        for record in batch.detections
+    ):
+        raise ValueError("Historical ingestion contains an orphan cluster reference")
+
+
 class BigQueryHistoryRepository:
     """Run bounded, parameterized reads and one atomic hourly write."""
 
@@ -99,6 +119,7 @@ class BigQueryHistoryRepository:
         return {row.detection_id: row.cluster_id for row in rows}
 
     def write_batch(self, batch: IngestionBatch) -> None:
+        _validate_batch_relationships(batch)
         current_bytes = self.storage_bytes()
         if current_bytes >= config.BIGQUERY_STORAGE_GUARD_BYTES:
             raise BigQueryStorageLimitExceeded(
@@ -106,65 +127,36 @@ class BigQueryHistoryRepository:
             )
 
         sql = f"""
-        CREATE TEMP TABLE staged_clusters AS
-        SELECT
-          JSON_VALUE(item, '$.cluster_id') AS cluster_id,
-          TIMESTAMP(JSON_VALUE(item, '$.snapshot_at')) AS snapshot_at,
-          DATE(JSON_VALUE(item, '$.snapshot_date')) AS snapshot_date,
-          ST_GEOGPOINT(
-            CAST(JSON_VALUE(item, '$.center_longitude') AS FLOAT64),
-            CAST(JSON_VALUE(item, '$.center_latitude') AS FLOAT64)
-          ) AS center,
-          ST_GEOGFROMGEOJSON(JSON_VALUE(item, '$.boundary_geojson')) AS boundary,
-          ARRAY(
-            SELECT JSON_VALUE(member)
-            FROM UNNEST(JSON_QUERY_ARRAY(item, '$.member_detection_ids')) AS member
-          ) AS member_detection_ids,
-          CAST(JSON_VALUE(item, '$.detection_count') AS INT64) AS detection_count,
-          CAST(JSON_VALUE(item, '$.total_frp_mw') AS FLOAT64) AS total_frp_mw,
-          CAST(JSON_VALUE(item, '$.maximum_frp_mw') AS FLOAT64) AS maximum_frp_mw,
-          TIMESTAMP(JSON_VALUE(item, '$.first_detected_at')) AS first_detected_at,
-          TIMESTAMP(JSON_VALUE(item, '$.last_detected_at')) AS last_detected_at,
-          JSON_VALUE(item, '$.confidence') AS confidence,
-          JSON_VALUE(item, '$.trend') AS trend,
-          JSON_VALUE(item, '$.severity') AS severity,
-          JSON_VALUE(item, '$.status') AS status,
-          JSON_VALUE(item, '$.merged_into_cluster_id') AS merged_into_cluster_id,
-          JSON_VALUE(item, '$.source_dataset') AS source_dataset
-        FROM UNNEST(JSON_QUERY_ARRAY(@clusters_json)) AS item;
-
-        CREATE TEMP TABLE staged_detections AS
-        SELECT
-          JSON_VALUE(item, '$.detection_id') AS detection_id,
-          JSON_VALUE(item, '$.cluster_id') AS cluster_id,
-          TIMESTAMP(JSON_VALUE(item, '$.cluster_snapshot_at')) AS cluster_snapshot_at,
-          TIMESTAMP(JSON_VALUE(item, '$.observed_at')) AS observed_at,
-          DATE(JSON_VALUE(item, '$.observation_date')) AS observation_date,
-          CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64) AS latitude,
-          CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64) AS longitude,
-          ST_GEOGPOINT(
-            CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64),
-            CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64)
-          ) AS position,
-          JSON_VALUE(item, '$.satellite') AS satellite,
-          JSON_VALUE(item, '$.confidence') AS confidence,
-          CAST(JSON_VALUE(item, '$.frp_mw') AS FLOAT64) AS frp_mw,
-          JSON_VALUE(item, '$.source_dataset') AS source_dataset
-        FROM UNNEST(JSON_QUERY_ARRAY(@detections_json)) AS item;
-
         BEGIN TRANSACTION;
 
-        ASSERT NOT EXISTS (
-          SELECT 1
-          FROM staged_detections AS detection
-          LEFT JOIN staged_clusters AS cluster
-            ON detection.cluster_id = cluster.cluster_id
-           AND detection.cluster_snapshot_at = cluster.snapshot_at
-          WHERE cluster.cluster_id IS NULL
-        ) AS 'Historical ingestion contains an orphan cluster reference';
-
         MERGE `{self._clusters_table}` AS target
-        USING staged_clusters AS source
+        USING (
+          SELECT
+            JSON_VALUE(item, '$.cluster_id') AS cluster_id,
+            TIMESTAMP(JSON_VALUE(item, '$.snapshot_at')) AS snapshot_at,
+            DATE(JSON_VALUE(item, '$.snapshot_date')) AS snapshot_date,
+            ST_GEOGPOINT(
+              CAST(JSON_VALUE(item, '$.center_longitude') AS FLOAT64),
+              CAST(JSON_VALUE(item, '$.center_latitude') AS FLOAT64)
+            ) AS center,
+            ST_GEOGFROMGEOJSON(JSON_VALUE(item, '$.boundary_geojson')) AS boundary,
+            ARRAY(
+              SELECT JSON_VALUE(member)
+              FROM UNNEST(JSON_QUERY_ARRAY(item, '$.member_detection_ids')) AS member
+            ) AS member_detection_ids,
+            CAST(JSON_VALUE(item, '$.detection_count') AS INT64) AS detection_count,
+            CAST(JSON_VALUE(item, '$.total_frp_mw') AS FLOAT64) AS total_frp_mw,
+            CAST(JSON_VALUE(item, '$.maximum_frp_mw') AS FLOAT64) AS maximum_frp_mw,
+            TIMESTAMP(JSON_VALUE(item, '$.first_detected_at')) AS first_detected_at,
+            TIMESTAMP(JSON_VALUE(item, '$.last_detected_at')) AS last_detected_at,
+            JSON_VALUE(item, '$.confidence') AS confidence,
+            JSON_VALUE(item, '$.trend') AS trend,
+            JSON_VALUE(item, '$.severity') AS severity,
+            JSON_VALUE(item, '$.status') AS status,
+            JSON_VALUE(item, '$.merged_into_cluster_id') AS merged_into_cluster_id,
+            JSON_VALUE(item, '$.source_dataset') AS source_dataset
+          FROM UNNEST(JSON_QUERY_ARRAY(@clusters_json)) AS item
+        ) AS source
           ON target.cluster_id = source.cluster_id
          AND target.snapshot_at = source.snapshot_at
          AND target.snapshot_date = @snapshot_date
@@ -197,7 +189,25 @@ class BigQueryHistoryRepository:
         );
 
         MERGE `{self._detections_table}` AS target
-        USING staged_detections AS source
+        USING (
+          SELECT
+            JSON_VALUE(item, '$.detection_id') AS detection_id,
+            JSON_VALUE(item, '$.cluster_id') AS cluster_id,
+            TIMESTAMP(JSON_VALUE(item, '$.cluster_snapshot_at')) AS cluster_snapshot_at,
+            TIMESTAMP(JSON_VALUE(item, '$.observed_at')) AS observed_at,
+            DATE(JSON_VALUE(item, '$.observation_date')) AS observation_date,
+            CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64) AS latitude,
+            CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64) AS longitude,
+            ST_GEOGPOINT(
+              CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64),
+              CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64)
+            ) AS position,
+            JSON_VALUE(item, '$.satellite') AS satellite,
+            JSON_VALUE(item, '$.confidence') AS confidence,
+            CAST(JSON_VALUE(item, '$.frp_mw') AS FLOAT64) AS frp_mw,
+            JSON_VALUE(item, '$.source_dataset') AS source_dataset
+          FROM UNNEST(JSON_QUERY_ARRAY(@detections_json)) AS item
+        ) AS source
           ON target.detection_id = source.detection_id
          AND target.observation_date >= @window_start
         WHEN MATCHED THEN UPDATE SET
