@@ -112,17 +112,17 @@ class BigQueryHistoryRepository:
           TIMESTAMP(JSON_VALUE(item, '$.snapshot_at')) AS snapshot_at,
           DATE(JSON_VALUE(item, '$.snapshot_date')) AS snapshot_date,
           ST_GEOGPOINT(
-            FLOAT64(JSON_VALUE(item, '$.center_longitude')),
-            FLOAT64(JSON_VALUE(item, '$.center_latitude'))
+            CAST(JSON_VALUE(item, '$.center_longitude') AS FLOAT64),
+            CAST(JSON_VALUE(item, '$.center_latitude') AS FLOAT64)
           ) AS center,
           ST_GEOGFROMGEOJSON(JSON_VALUE(item, '$.boundary_geojson')) AS boundary,
           ARRAY(
             SELECT JSON_VALUE(member)
             FROM UNNEST(JSON_QUERY_ARRAY(item, '$.member_detection_ids')) AS member
           ) AS member_detection_ids,
-          INT64(JSON_VALUE(item, '$.detection_count')) AS detection_count,
-          FLOAT64(JSON_VALUE(item, '$.total_frp_mw')) AS total_frp_mw,
-          FLOAT64(JSON_VALUE(item, '$.maximum_frp_mw')) AS maximum_frp_mw,
+          CAST(JSON_VALUE(item, '$.detection_count') AS INT64) AS detection_count,
+          CAST(JSON_VALUE(item, '$.total_frp_mw') AS FLOAT64) AS total_frp_mw,
+          CAST(JSON_VALUE(item, '$.maximum_frp_mw') AS FLOAT64) AS maximum_frp_mw,
           TIMESTAMP(JSON_VALUE(item, '$.first_detected_at')) AS first_detected_at,
           TIMESTAMP(JSON_VALUE(item, '$.last_detected_at')) AS last_detected_at,
           JSON_VALUE(item, '$.confidence') AS confidence,
@@ -140,15 +140,15 @@ class BigQueryHistoryRepository:
           TIMESTAMP(JSON_VALUE(item, '$.cluster_snapshot_at')) AS cluster_snapshot_at,
           TIMESTAMP(JSON_VALUE(item, '$.observed_at')) AS observed_at,
           DATE(JSON_VALUE(item, '$.observation_date')) AS observation_date,
-          FLOAT64(JSON_VALUE(item, '$.latitude')) AS latitude,
-          FLOAT64(JSON_VALUE(item, '$.longitude')) AS longitude,
+          CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64) AS latitude,
+          CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64) AS longitude,
           ST_GEOGPOINT(
-            FLOAT64(JSON_VALUE(item, '$.longitude')),
-            FLOAT64(JSON_VALUE(item, '$.latitude'))
+            CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64),
+            CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64)
           ) AS position,
           JSON_VALUE(item, '$.satellite') AS satellite,
           JSON_VALUE(item, '$.confidence') AS confidence,
-          FLOAT64(JSON_VALUE(item, '$.frp_mw')) AS frp_mw,
+          CAST(JSON_VALUE(item, '$.frp_mw') AS FLOAT64) AS frp_mw,
           JSON_VALUE(item, '$.source_dataset') AS source_dataset
         FROM UNNEST(JSON_QUERY_ARRAY(@detections_json)) AS item;
 

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `project-d66d4e5f-ee28-4c77-845.wildfires.fire_cluste
   snapshot_date DATE NOT NULL,
   center GEOGRAPHY NOT NULL,
   boundary GEOGRAPHY NOT NULL,
-  member_detection_ids ARRAY<STRING> NOT NULL,
+  member_detection_ids ARRAY<STRING>,
   detection_count INT64 NOT NULL,
   total_frp_mw FLOAT64 NOT NULL,
   maximum_frp_mw FLOAT64 NOT NULL,

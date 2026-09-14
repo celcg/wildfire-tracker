@@ -291,6 +291,8 @@ class BigQueryRepositoryTest(unittest.TestCase):
         self.assertIn("BEGIN TRANSACTION", sql)
         self.assertIn("COMMIT TRANSACTION", sql)
         self.assertIn("ASSERT NOT EXISTS", sql)
+        self.assertIn("AS FLOAT64", sql)
+        self.assertNotIn("FLOAT64(JSON_VALUE", sql)
         self.assertNotIn(batch.detections[0].detection_id, sql)
         self.assertEqual(job_config.maximum_bytes_billed, 50 * 1024 * 1024)
         self.assertEqual(len(job_config.query_parameters), 5)
