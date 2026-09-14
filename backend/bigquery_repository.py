@@ -154,6 +154,15 @@ class BigQueryHistoryRepository:
 
         BEGIN TRANSACTION;
 
+        ASSERT NOT EXISTS (
+          SELECT 1
+          FROM staged_detections AS detection
+          LEFT JOIN staged_clusters AS cluster
+            ON detection.cluster_id = cluster.cluster_id
+           AND detection.cluster_snapshot_at = cluster.snapshot_at
+          WHERE cluster.cluster_id IS NULL
+        ) AS 'Historical ingestion contains an orphan cluster reference';
+
         MERGE `{self._clusters_table}` AS target
         USING staged_clusters AS source
           ON target.cluster_id = source.cluster_id
@@ -209,18 +218,6 @@ class BigQueryHistoryRepository:
           source.confidence, source.frp_mw, source.source_dataset,
           @ingested_at, @ingested_at
         );
-
-        ASSERT NOT EXISTS (
-          SELECT 1
-          FROM `{self._detections_table}` AS detection
-          LEFT JOIN `{self._clusters_table}` AS cluster
-            ON detection.cluster_id = cluster.cluster_id
-           AND detection.cluster_snapshot_at = cluster.snapshot_at
-           AND cluster.snapshot_date = @snapshot_date
-          WHERE detection.observation_date >= @window_start
-            AND detection.cluster_snapshot_at = @ingested_at
-            AND cluster.cluster_id IS NULL
-        ) AS 'Historical ingestion created an orphan cluster reference';
 
         COMMIT TRANSACTION;
         """

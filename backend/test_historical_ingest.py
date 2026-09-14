@@ -291,6 +291,7 @@ class BigQueryRepositoryTest(unittest.TestCase):
         self.assertIn("BEGIN TRANSACTION", sql)
         self.assertIn("COMMIT TRANSACTION", sql)
         self.assertIn("ASSERT NOT EXISTS", sql)
+        self.assertIn("FROM staged_detections AS detection", sql)
         self.assertIn("AS FLOAT64", sql)
         self.assertNotIn("FLOAT64(JSON_VALUE", sql)
         self.assertNotIn(batch.detections[0].detection_id, sql)
