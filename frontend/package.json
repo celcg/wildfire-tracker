@@ -3,11 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.21.0",
+    "npm": "10.9.4"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:production": "node scripts/validateProductionEnv.js && vite build",
     "lint": "oxlint",
-    "test": "node --test src/config/fireConfig.test.js src/config/firebaseConfig.test.js src/domain/incidentPresentation.test.js src/services/cacheStorage.test.js src/services/clientIdentity.test.js src/services/fireApi.test.js src/services/requestSecurity.test.js",
+    "test": "node --test",
+    "test:smoke": "node --test src/config/fireConfig.test.js src/services/fireApi.test.js src/services/requestSecurity.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -9,7 +9,9 @@ import pandas as pd
 from fastapi import HTTPException
 
 import config
+from fire_data_validation import normalize_fire_data
 from logging_config import get_logger, log_event
+from nasa_client import fetch_nasa_csv
 
 
 # A lock makes the cache safe when FastAPI serves synchronous routes in threads.
@@ -204,7 +206,8 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
         log_event(logger, logging.INFO, "nasa.fetch_started", days=days)
 
         try:
-            fires = pd.read_csv(_build_firms_url(days))[config.FIRE_COLUMNS]
+            source = fetch_nasa_csv(_build_firms_url(days))
+            fires, quality = normalize_fire_data(source, days)
         except Exception as exc:
             failure_count = None
             retry_after = None
@@ -246,6 +249,7 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
             days=days,
             duration_ms=round((perf_counter() - fetch_started_at) * 1000, 2),
             row_count=len(fires),
+            **quality.log_fields(),
         )
         return _with_cache_metadata(fires, age_seconds=0, is_stale=False)
 

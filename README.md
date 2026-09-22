@@ -18,7 +18,7 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Recent wildfire detections sourced from NASA FIRMS
 - Detection details including date, time, satellite, confidence, and fire radiative power
 - Responsive React interface hosted on Firebase
-- REST API hosted as a containerized service on Google Cloud Run
+- REST API source-built and hosted as a managed service on Google Cloud Run
 - Configurable observation window and aggregate statistics
 - Explainable spatiotemporal grouping into possible fire clusters
 - Switchable detection and cluster layers with aggregate FRP insights
@@ -70,7 +70,10 @@ flowchart LR
 
 The frontend and API deploy independently. A manual refresh bypasses the
 two-hour browser cache, but never the backend's one-hour NASA protection
-window. The NASA cache and refresh lock remain process-local, while Firestore
+window. `nasa_client.py` bounds HTTP transport and payload size before
+`fire_data_validation.py` validates, normalizes, deduplicates, and reports only
+aggregate quality counts; `fire_data.py` owns caching and availability behavior.
+The NASA cache and refresh lock remain process-local, while Firestore
 shares rate-limit state across Cloud Run instances. React and FastAPI correlate
 requests with `X-Request-ID`; a separate installation UUID is HMAC-hashed before
 it becomes a Firestore key. Logs exclude UUIDs, payloads, coordinates, visitor
@@ -130,7 +133,9 @@ message. If an API error reaches React, its JavaScript `Error` carries the same
 
 ## Local Development
 
-Create `backend/.env` and provide a valid NASA FIRMS key:
+Use Python 3.13.11 and Node.js 22.21.0, as recorded in
+`backend/.python-version` and `frontend/.nvmrc`. Create `backend/.env` from
+`backend/.env.example` and provide a valid NASA FIRMS key:
 
 ```env
 NASA_KEY=your_nasa_firms_key
@@ -142,15 +147,28 @@ Start the API:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+python -m venv .venv
+```
+
+Then install and run on Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload
+```
+
+Or on Linux and macOS:
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt
+./.venv/bin/python -m uvicorn main:app --reload
 ```
 
 Start the frontend in a separate terminal:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -163,6 +181,34 @@ reCAPTCHA key.
 `CLIENT_ID_REQUIRED` and `APP_CHECK_REQUIRED` are temporary rollout controls.
 Both remain enabled in the final production configuration; they may be disabled
 only while an older frontend is being replaced.
+
+## Verification And Deployment
+
+Ordinary changes use the smoke suites:
+
+```powershell
+# From backend/
+.\.venv\Scripts\python.exe run_smoke_tests.py
+```
+
+```bash
+# From frontend/
+npm run test:smoke
+npm run lint
+```
+
+Localized fixes run only their relevant test. Full application suites are
+reserved for very important changes, milestones, and releases. The complete
+classification, commands, escalation rules, and CI labels are documented in
+[`TESTING.md`](TESTING.md). Tests use mocks and must not consume NASA quota or
+write to Firestore or BigQuery.
+
+The backend is deployed from source with Google Cloud Buildpacks; there is no
+repository Dockerfile. The frontend is built into `frontend/dist` and deployed
+to Firebase Hosting. Exact runtime assumptions, branch checks, deployment
+commands, schema order, smoke tests, and rollback guidance are in
+[`DEPLOYMENT.md`](DEPLOYMENT.md). The ordered roadmap is maintained in
+[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ## API Overview
 
@@ -236,7 +282,9 @@ including their boundary and member detection IDs. Every detection points to
 its latest `(cluster_id, cluster_snapshot_at)` snapshot; isolated detections
 also receive a one-member cluster. BigQuery does not enforce key constraints,
 so FastAPI validates every relationship before both table updates run
-atomically in one transaction.
+atomically in one transaction. Reviewed SQL templates live in `backend/sql/`;
+`bigquery_sql.py` validates identifier substitutions while row data remains
+bound query parameters in `bigquery_repository.py`.
 
 Queries require partition filters and each ingestion job is capped at 50 MiB
 scanned. Before writing, the API reads table metadata and stops ingestion at
@@ -258,6 +306,6 @@ ORDER BY snapshot_count DESC;
 
 Production configuration uses `BIGQUERY_ENABLED`, `BIGQUERY_PROJECT_ID`,
 `BIGQUERY_DATASET`, `BIGQUERY_LOCATION`, `BIGQUERY_MAX_BYTES_BILLED`,
-`BIGQUERY_STORAGE_GUARD_BYTES`, `SCHEDULER_SERVICE_ACCOUNT`, and
-`SCHEDULER_AUDIENCE`. The schema is versioned in
+`BIGQUERY_PAYLOAD_MAX_BYTES`, `BIGQUERY_STORAGE_GUARD_BYTES`,
+`SCHEDULER_SERVICE_ACCOUNT`, and `SCHEDULER_AUDIENCE`. The schema is versioned in
 `backend/sql/create_bigquery_schema.sql`.

@@ -1,7 +1,7 @@
-CREATE SCHEMA IF NOT EXISTS `project-d66d4e5f-ee28-4c77-845.wildfires`
+CREATE SCHEMA IF NOT EXISTS `{{BIGQUERY_DATASET}}`
 OPTIONS(location = "europe-west1");
 
-CREATE TABLE IF NOT EXISTS `project-d66d4e5f-ee28-4c77-845.wildfires.fire_clusters` (
+CREATE TABLE IF NOT EXISTS `{{CLUSTERS_TABLE}}` (
   cluster_id STRING NOT NULL,
   snapshot_at TIMESTAMP NOT NULL,
   snapshot_date DATE NOT NULL,
@@ -29,7 +29,7 @@ OPTIONS (
   description = "Hourly snapshots of explainable wildfire detection clusters"
 );
 
-CREATE TABLE IF NOT EXISTS `project-d66d4e5f-ee28-4c77-845.wildfires.fire_detections` (
+CREATE TABLE IF NOT EXISTS `{{DETECTIONS_TABLE}}` (
   detection_id STRING NOT NULL,
   cluster_id STRING NOT NULL,
   cluster_snapshot_at TIMESTAMP NOT NULL,
@@ -40,14 +40,15 @@ CREATE TABLE IF NOT EXISTS `project-d66d4e5f-ee28-4c77-845.wildfires.fire_detect
   position GEOGRAPHY NOT NULL,
   satellite STRING NOT NULL,
   confidence STRING NOT NULL,
-  frp_mw FLOAT64 NOT NULL,
+  frp_mw FLOAT64,
+  quality_flags ARRAY<STRING>,
   source_dataset STRING NOT NULL,
   first_ingested_at TIMESTAMP NOT NULL,
   last_ingested_at TIMESTAMP NOT NULL,
   PRIMARY KEY (detection_id) NOT ENFORCED,
   CONSTRAINT detection_cluster_fk
     FOREIGN KEY (cluster_id, cluster_snapshot_at)
-    REFERENCES `project-d66d4e5f-ee28-4c77-845.wildfires.fire_clusters`
+    REFERENCES `{{CLUSTERS_TABLE}}`
       (cluster_id, snapshot_at) NOT ENFORCED
 )
 PARTITION BY observation_date

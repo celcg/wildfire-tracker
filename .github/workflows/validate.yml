@@ -1,0 +1,56 @@
+name: Smoke validation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend smoke tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NASA_KEY: ci-placeholder
+      LOG_TO_FILE: "false"
+      RATE_LIMIT_BACKEND: memory
+      APP_CHECK_REQUIRED: "false"
+      CLIENT_ID_REQUIRED: "false"
+      BIGQUERY_ENABLED: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Run backend smoke tests
+        run: python run_smoke_tests.py
+
+  frontend:
+    name: Frontend smoke tests and lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+      - name: Install dependencies
+        run: npm ci
+      - name: Run frontend smoke tests
+        run: npm run test:smoke
+      - name: Run frontend lint
+        run: npm run lint

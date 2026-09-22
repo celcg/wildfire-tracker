@@ -25,7 +25,8 @@ class DetectionRecord:
     longitude: float
     satellite: str
     confidence: str
-    frp_mw: float
+    frp_mw: float | None
+    quality_flags: tuple[str, ...]
     source_dataset: str
 
 
@@ -292,7 +293,8 @@ def build_ingestion_batch(
             row = source_rows[key]
             observed_at = detection_observed_at(row.acq_date, row.acq_time)
             frp = pd.to_numeric(row.frp, errors="coerce")
-            frp = 0.0 if pd.isna(frp) else max(0.0, float(frp))
+            frp = None if pd.isna(frp) or float(frp) < 0 else float(frp)
+            quality_flags = tuple(getattr(row, "quality_flags", ()))
             records[key] = DetectionRecord(
                 detection_id=key,
                 cluster_id=cluster_id,
@@ -304,6 +306,7 @@ def build_ingestion_batch(
                 satellite=str(row.satellite),
                 confidence=str(row.confidence),
                 frp_mw=frp,
+                quality_flags=quality_flags,
                 source_dataset=config.NASA_DATASET,
             )
 

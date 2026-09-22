@@ -43,6 +43,9 @@ export function formatConfidence(value) {
 }
 
 export function formatFrp(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Not available";
+  }
   const power = Number(value);
   return Number.isFinite(power) ? power.toFixed(2) + " MW" : "Not available";
 }

@@ -172,6 +172,7 @@ class IncidentClusteringTest(unittest.TestCase):
 
         self.assertEqual(incident.total_frp_mw, 0)
         self.assertEqual(incident.severity, "low")
+        self.assertIsNone(incident.detections[0].frp)
 
     @patch("main.fetch_fires")
     def test_incidents_endpoint_uses_requested_window(self, fetch_fires):

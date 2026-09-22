@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from client_identity import CLIENT_ID_HEADER
-from config import ALLOWED_ORIGINS
+from config import ALLOWED_ORIGINS, FIRE_COLUMNS
 from firebase_security import APP_CHECK_HEADER
 from fire_data import (
     DATA_AGE_SECONDS_ATTR,
@@ -129,7 +129,9 @@ def fires(
     """Return recent detections for a validated observation window."""
     fire_frame = fetch_fires(days, force_refresh=refresh)
     _set_data_freshness_headers(response, fire_frame)
-    return fire_frame.to_dict(orient="records")
+    # Validation may attach internal quality metadata for historical ingestion;
+    # public reads retain the established detection shape.
+    return fire_frame[FIRE_COLUMNS].to_dict(orient="records")
 
 
 def stats(

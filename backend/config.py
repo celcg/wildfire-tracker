@@ -30,6 +30,25 @@ FIRE_COLUMNS = [
     "frp",
 ]
 
+# The upstream CSV is untrusted input. These limits bound network waits, memory
+# use and the O(n²) worst case of the current explainable clustering algorithm.
+NASA_CONNECT_TIMEOUT_SECONDS = float(os.getenv("NASA_CONNECT_TIMEOUT_SECONDS", "5"))
+NASA_READ_TIMEOUT_SECONDS = float(os.getenv("NASA_READ_TIMEOUT_SECONDS", "30"))
+NASA_MAX_RESPONSE_BYTES = int(
+    os.getenv("NASA_MAX_RESPONSE_BYTES", str(8 * 1024 * 1024))
+)
+NASA_MAX_ROWS = int(os.getenv("NASA_MAX_ROWS", "10000"))
+NASA_MAX_TEXT_LENGTH = int(os.getenv("NASA_MAX_TEXT_LENGTH", "32"))
+NASA_FUTURE_TOLERANCE_SECONDS = int(
+    os.getenv("NASA_FUTURE_TOLERANCE_SECONDS", str(15 * 60))
+)
+NASA_HIGH_FRP_THRESHOLD_MW = float(
+    os.getenv("NASA_HIGH_FRP_THRESHOLD_MW", "1000")
+)
+NASA_ALLOWED_CONTENT_TYPES = frozenset(
+    {"text/csv", "text/plain", "application/csv", "application/octet-stream"}
+)
+
 # NASA is never queried more than once per interval by the same API instance.
 CACHE_TTL_SECONDS = 60 * 60
 # A cold instance with no successful data retries sooner after NASA failures,
@@ -103,6 +122,11 @@ BIGQUERY_DATASET = os.getenv("BIGQUERY_DATASET", "wildfires")
 BIGQUERY_LOCATION = os.getenv("BIGQUERY_LOCATION", "europe-west1")
 BIGQUERY_MAX_BYTES_BILLED = int(
     os.getenv("BIGQUERY_MAX_BYTES_BILLED", str(50 * 1024 * 1024))
+)
+# BigQuery caps the entire API request at 10 MB. Measuring the escaped JSON and
+# stopping at 8 MiB leaves room for SQL text and request metadata.
+BIGQUERY_PAYLOAD_MAX_BYTES = int(
+    os.getenv("BIGQUERY_PAYLOAD_MAX_BYTES", str(8 * 1024 * 1024))
 )
 # Stop writes before the current 10 GiB free storage allowance is approached.
 BIGQUERY_STORAGE_GUARD_BYTES = int(

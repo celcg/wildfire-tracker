@@ -11,8 +11,10 @@ from google.cloud import bigquery
 import config
 from bigquery_repository import (
     BigQueryHistoryRepository,
+    BigQueryPayloadTooLarge,
     BigQueryStorageLimitExceeded,
 )
+from bigquery_sql import _load_sql, render_sql
 from historical_ingest import ingest_fire_history
 from historical_models import (
     IngestionBatch,
@@ -21,6 +23,7 @@ from historical_models import (
     snapshot_hour,
 )
 from incident_clustering import cluster_fires
+from render_bigquery_sql import rendered_resource
 from scheduler_auth import enforce_scheduler_auth
 
 
@@ -265,6 +268,56 @@ class SchedulerAuthenticationTest(unittest.TestCase):
 
 
 class BigQueryRepositoryTest(unittest.TestCase):
+    def test_schema_resources_use_configured_validated_identifiers(self):
+        with patch.object(config, "BIGQUERY_PROJECT_ID", "safe-project"):
+            with patch.object(config, "BIGQUERY_DATASET", "safe_dataset"):
+                schema = rendered_resource("create_bigquery_schema.sql")
+                migration = rendered_resource(
+                    "migrate_fire_detection_quality.sql"
+                )
+
+        self.assertNotIn("{{", schema)
+        self.assertIn("`safe-project.safe_dataset`", schema)
+        self.assertIn(
+            "`safe-project.safe_dataset.fire_clusters`",
+            schema,
+        )
+        self.assertNotIn("project-d66d4e5f-ee28-4c77-845", schema)
+        self.assertIn(
+            "`safe-project.safe_dataset.fire_detections`",
+            migration,
+        )
+
+    def test_sql_resource_contains_only_the_expected_identifier_tokens(self):
+        template = _load_sql("history_merge.sql")
+
+        self.assertEqual(template.count("{{CLUSTERS_TABLE}}"), 1)
+        self.assertEqual(template.count("{{DETECTIONS_TABLE}}"), 1)
+        self.assertIn("@clusters_json", template)
+        self.assertIn("@detections_json", template)
+
+    def test_sql_renderer_only_substitutes_validated_table_identifiers(self):
+        sql = render_sql(
+            "history_merge.sql",
+            {
+                "CLUSTERS_TABLE": "safe-project.wildfires.fire_clusters",
+                "DETECTIONS_TABLE": "safe-project.wildfires.fire_detections",
+            },
+        )
+
+        self.assertNotIn("{{", sql)
+        self.assertIn("`safe-project.wildfires.fire_clusters`", sql)
+        self.assertIn("`safe-project.wildfires.fire_detections`", sql)
+
+        with self.assertRaisesRegex(ValueError, "Invalid BigQuery resource identifier"):
+            render_sql(
+                "history_merge.sql",
+                {
+                    "CLUSTERS_TABLE": "safe`; DROP TABLE victims; --",
+                    "DETECTIONS_TABLE": "safe-project.wildfires.fire_detections",
+                },
+            )
+
     def test_storage_guard_prevents_query_submission(self):
         module = Mock()
         client = Mock()
@@ -280,6 +333,24 @@ class BigQueryRepositoryTest(unittest.TestCase):
 
         with self.assertRaises(BigQueryStorageLimitExceeded):
             repository.write_batch(batch)
+
+        client.query.assert_not_called()
+
+    def test_payload_guard_prevents_query_submission(self):
+        client = Mock()
+        client.get_table.return_value.num_bytes = 0
+        repository = BigQueryHistoryRepository(client, bigquery)
+        fires = pd.DataFrame([fire(42.1, -8.6, 900)])
+        batch = build_ingestion_batch(
+            fires,
+            cluster_fires(fires, 1),
+            {},
+            at=AT,
+        )
+
+        with patch.object(config, "BIGQUERY_PAYLOAD_MAX_BYTES", 1):
+            with self.assertRaises(BigQueryPayloadTooLarge):
+                repository.write_batch(batch)
 
         client.query.assert_not_called()
 
@@ -308,6 +379,45 @@ class BigQueryRepositoryTest(unittest.TestCase):
         self.assertNotIn(batch.detections[0].detection_id, sql)
         self.assertEqual(job_config.maximum_bytes_billed, 50 * 1024 * 1024)
         self.assertEqual(len(job_config.query_parameters), 5)
+
+    def test_malicious_payload_remains_a_bound_parameter(self):
+        attack = "N20'); DROP TABLE fire_clusters; --"
+        fires = pd.DataFrame([fire(42.1, -8.6, 900)])
+        fires.loc[0, "satellite"] = attack
+        batch = build_ingestion_batch(
+            fires,
+            cluster_fires(fires, 1),
+            {},
+            at=AT,
+        )
+        client = Mock()
+        client.get_table.return_value.num_bytes = 0
+        client.query.return_value.result.return_value = []
+        repository = BigQueryHistoryRepository(client, bigquery)
+
+        repository.write_batch(batch)
+
+        sql = client.query.call_args.args[0]
+        parameters = client.query.call_args.kwargs["job_config"].query_parameters
+        detections_json = next(
+            parameter.value
+            for parameter in parameters
+            if parameter.name == "detections_json"
+        )
+        self.assertNotIn(attack, sql)
+        self.assertIn(attack, detections_json)
+
+    def test_invalid_project_identifier_is_rejected_before_query(self):
+        client = Mock()
+        with patch.object(
+            config,
+            "BIGQUERY_PROJECT_ID",
+            "safe`; DROP TABLE victims; --",
+        ):
+            with self.assertRaisesRegex(ValueError, "Invalid BigQuery project"):
+                BigQueryHistoryRepository(client, bigquery)
+
+        client.query.assert_not_called()
 
     def test_orphan_relationship_is_rejected_before_bigquery(self):
         fires = pd.DataFrame([fire(42.1, -8.6, 900)])

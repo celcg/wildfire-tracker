@@ -1,16 +1,64 @@
-# React + Vite
+# Wildfire Tracker Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React and Leaflet client for recent NASA FIRMS detections and possible fire
+clusters across the Iberian Peninsula. The frontend is an independent Vite
+application and communicates only with the FastAPI service.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 22.21.0, recorded in `.nvmrc`
+- npm 10.9.4
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Install the locked dependencies:
 
-## Expanding the Oxlint configuration
+```bash
+npm ci
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The default development API path is `/api`; `vite.config.js` proxies it to
+`http://127.0.0.1:8000`. To call another API, create `.env.local` from
+`.env.example` and set `VITE_API_URL`.
+
+Firebase web and reCAPTCHA values are public browser configuration, not server
+secrets. When they are absent, App Check is intentionally disabled for local
+development. Production builds must provide all four Firebase/App Check values.
+Never place `NASA_KEY`, the client-ID HMAC secret, or Google service credentials
+in a `VITE_*` variable.
+
+## Commands
+
+```bash
+npm run dev
+npm run test:smoke
+npm test
+npm run lint
+npm run build
+npm run preview
+```
+
+`npm run test:smoke` runs the small set used by ordinary pull requests. `npm
+test` uses automatic discovery for the full suite and is reserved for very important
+frontend changes and releases. See the root `TESTING.md` for selection rules.
+
+## Data Behavior
+
+- Detection and incident caches are versioned, separated by observation window,
+  and expire after two hours.
+- Incidents load only when selected; do not add a detections-then-incidents
+  request waterfall.
+- Manual refresh bypasses browser storage but not the API's NASA protection.
+- Stale successful data remains visible with its approximate source age.
+- Cluster envelopes are observation context, not confirmed incidents or measured
+  burned-area boundaries.
+
+## Production Build And Hosting
+
+Run `npm run build:production` to validate the API and Firebase/App Check values
+before generating `dist/`. Firebase Hosting serves that directory and rewrites
+application routes to `index.html` according to `firebase.json`. `npm run build`
+remains available for local and CI compilation without production credentials.
+
+See the root `README.md`, `DEPLOYMENT.md`, and `IMPLEMENTATION_PLAN.md` for the
+full architecture, release procedure, and roadmap.

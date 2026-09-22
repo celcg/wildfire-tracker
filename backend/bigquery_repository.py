@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import date
 from typing import Any, Iterable
 
 import config
+from bigquery_sql import render_sql
 from historical_models import IngestionBatch
 
 
@@ -16,6 +18,10 @@ _NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 class BigQueryStorageLimitExceeded(RuntimeError):
     """Raised before writes when the configured free-tier guard is reached."""
+
+
+class BigQueryPayloadTooLarge(RuntimeError):
+    """Raised before submission when query parameters exceed the safe budget."""
 
 
 def _validated_identifier(value: str, pattern: re.Pattern[str], label: str) -> str:
@@ -77,6 +83,14 @@ class BigQueryHistoryRepository:
             use_query_cache=False,
         )
 
+    def _run(self, sql: str, parameters: Iterable[Any]):
+        """Apply the same cost ceiling and regional execution to every query."""
+        return self._client.query(
+            sql,
+            job_config=self._query_config(parameters),
+            location=config.BIGQUERY_LOCATION,
+        ).result()
+
     def storage_bytes(self) -> int:
         """Read table metadata without scanning billable table contents."""
         return sum(
@@ -93,12 +107,10 @@ class BigQueryHistoryRepository:
         if not keys:
             return {}
 
-        sql = f"""
-            SELECT detection_id, cluster_id
-            FROM `{self._detections_table}`
-            WHERE observation_date >= @window_start
-              AND detection_id IN UNNEST(@detection_ids)
-        """
+        sql = render_sql(
+            "existing_assignments.sql",
+            {"DETECTIONS_TABLE": self._detections_table},
+        )
         parameters = [
             self._bigquery.ScalarQueryParameter(
                 "window_start",
@@ -111,11 +123,7 @@ class BigQueryHistoryRepository:
                 keys,
             ),
         ]
-        rows = self._client.query(
-            sql,
-            job_config=self._query_config(parameters),
-            location=config.BIGQUERY_LOCATION,
-        ).result()
+        rows = self._run(sql, parameters)
         return {row.detection_id: row.cluster_id for row in rows}
 
     def write_batch(self, batch: IngestionBatch) -> None:
@@ -126,111 +134,29 @@ class BigQueryHistoryRepository:
                 "BigQuery storage safety threshold reached"
             )
 
-        sql = f"""
-        BEGIN TRANSACTION;
+        clusters_json = batch.clusters_json()
+        detections_json = batch.detections_json()
+        # Measure the outer JSON representation because BigQuery's 10 MB API
+        # limit includes escaping added around string query parameters.
+        parameter_bytes = len(
+            json.dumps(
+                {
+                    "clusters_json": clusters_json,
+                    "detections_json": detections_json,
+                },
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        if parameter_bytes > config.BIGQUERY_PAYLOAD_MAX_BYTES:
+            raise BigQueryPayloadTooLarge("BigQuery ingestion payload is too large")
 
-        MERGE `{self._clusters_table}` AS target
-        USING (
-          SELECT
-            JSON_VALUE(item, '$.cluster_id') AS cluster_id,
-            TIMESTAMP(JSON_VALUE(item, '$.snapshot_at')) AS snapshot_at,
-            DATE(JSON_VALUE(item, '$.snapshot_date')) AS snapshot_date,
-            ST_GEOGPOINT(
-              CAST(JSON_VALUE(item, '$.center_longitude') AS FLOAT64),
-              CAST(JSON_VALUE(item, '$.center_latitude') AS FLOAT64)
-            ) AS center,
-            ST_GEOGFROMGEOJSON(JSON_VALUE(item, '$.boundary_geojson')) AS boundary,
-            ARRAY(
-              SELECT JSON_VALUE(member)
-              FROM UNNEST(JSON_QUERY_ARRAY(item, '$.member_detection_ids')) AS member
-            ) AS member_detection_ids,
-            CAST(JSON_VALUE(item, '$.detection_count') AS INT64) AS detection_count,
-            CAST(JSON_VALUE(item, '$.total_frp_mw') AS FLOAT64) AS total_frp_mw,
-            CAST(JSON_VALUE(item, '$.maximum_frp_mw') AS FLOAT64) AS maximum_frp_mw,
-            TIMESTAMP(JSON_VALUE(item, '$.first_detected_at')) AS first_detected_at,
-            TIMESTAMP(JSON_VALUE(item, '$.last_detected_at')) AS last_detected_at,
-            JSON_VALUE(item, '$.confidence') AS confidence,
-            JSON_VALUE(item, '$.trend') AS trend,
-            JSON_VALUE(item, '$.severity') AS severity,
-            JSON_VALUE(item, '$.status') AS status,
-            JSON_VALUE(item, '$.merged_into_cluster_id') AS merged_into_cluster_id,
-            JSON_VALUE(item, '$.source_dataset') AS source_dataset
-          FROM UNNEST(JSON_QUERY_ARRAY(@clusters_json)) AS item
-        ) AS source
-          ON target.cluster_id = source.cluster_id
-         AND target.snapshot_at = source.snapshot_at
-         AND target.snapshot_date = @snapshot_date
-        WHEN MATCHED THEN UPDATE SET
-          center = source.center,
-          boundary = source.boundary,
-          member_detection_ids = source.member_detection_ids,
-          detection_count = source.detection_count,
-          total_frp_mw = source.total_frp_mw,
-          maximum_frp_mw = source.maximum_frp_mw,
-          first_detected_at = source.first_detected_at,
-          last_detected_at = source.last_detected_at,
-          confidence = source.confidence,
-          trend = source.trend,
-          severity = source.severity,
-          status = source.status,
-          merged_into_cluster_id = source.merged_into_cluster_id
-        WHEN NOT MATCHED THEN INSERT (
-          cluster_id, snapshot_at, snapshot_date, center, boundary,
-          member_detection_ids, detection_count, total_frp_mw, maximum_frp_mw,
-          first_detected_at, last_detected_at, confidence, trend, severity,
-          status, merged_into_cluster_id, source_dataset
-        ) VALUES (
-          source.cluster_id, source.snapshot_at, source.snapshot_date,
-          source.center, source.boundary, source.member_detection_ids,
-          source.detection_count, source.total_frp_mw, source.maximum_frp_mw,
-          source.first_detected_at, source.last_detected_at, source.confidence,
-          source.trend, source.severity, source.status,
-          source.merged_into_cluster_id, source.source_dataset
-        );
-
-        MERGE `{self._detections_table}` AS target
-        USING (
-          SELECT
-            JSON_VALUE(item, '$.detection_id') AS detection_id,
-            JSON_VALUE(item, '$.cluster_id') AS cluster_id,
-            TIMESTAMP(JSON_VALUE(item, '$.cluster_snapshot_at')) AS cluster_snapshot_at,
-            TIMESTAMP(JSON_VALUE(item, '$.observed_at')) AS observed_at,
-            DATE(JSON_VALUE(item, '$.observation_date')) AS observation_date,
-            CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64) AS latitude,
-            CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64) AS longitude,
-            ST_GEOGPOINT(
-              CAST(JSON_VALUE(item, '$.longitude') AS FLOAT64),
-              CAST(JSON_VALUE(item, '$.latitude') AS FLOAT64)
-            ) AS position,
-            JSON_VALUE(item, '$.satellite') AS satellite,
-            JSON_VALUE(item, '$.confidence') AS confidence,
-            CAST(JSON_VALUE(item, '$.frp_mw') AS FLOAT64) AS frp_mw,
-            JSON_VALUE(item, '$.source_dataset') AS source_dataset
-          FROM UNNEST(JSON_QUERY_ARRAY(@detections_json)) AS item
-        ) AS source
-          ON target.detection_id = source.detection_id
-         AND target.observation_date >= @window_start
-        WHEN MATCHED THEN UPDATE SET
-          cluster_id = source.cluster_id,
-          cluster_snapshot_at = source.cluster_snapshot_at,
-          confidence = source.confidence,
-          frp_mw = source.frp_mw,
-          last_ingested_at = @ingested_at
-        WHEN NOT MATCHED THEN INSERT (
-          detection_id, cluster_id, cluster_snapshot_at, observed_at,
-          observation_date, latitude, longitude, position, satellite,
-          confidence, frp_mw, source_dataset, first_ingested_at,
-          last_ingested_at
-        ) VALUES (
-          source.detection_id, source.cluster_id, source.cluster_snapshot_at,
-          source.observed_at, source.observation_date, source.latitude,
-          source.longitude, source.position, source.satellite,
-          source.confidence, source.frp_mw, source.source_dataset,
-          @ingested_at, @ingested_at
-        );
-
-        COMMIT TRANSACTION;
-        """
+        sql = render_sql(
+            "history_merge.sql",
+            {
+                "CLUSTERS_TABLE": self._clusters_table,
+                "DETECTIONS_TABLE": self._detections_table,
+            },
+        )
         window_start = min(
             record.observation_date for record in batch.detections
         )
@@ -238,12 +164,12 @@ class BigQueryHistoryRepository:
             self._bigquery.ScalarQueryParameter(
                 "clusters_json",
                 "STRING",
-                batch.clusters_json(),
+                clusters_json,
             ),
             self._bigquery.ScalarQueryParameter(
                 "detections_json",
                 "STRING",
-                batch.detections_json(),
+                detections_json,
             ),
             self._bigquery.ScalarQueryParameter(
                 "snapshot_date",
@@ -261,8 +187,4 @@ class BigQueryHistoryRepository:
                 batch.snapshot_at,
             ),
         ]
-        self._client.query(
-            sql,
-            job_config=self._query_config(parameters),
-            location=config.BIGQUERY_LOCATION,
-        ).result()
+        self._run(sql, parameters)

@@ -1,0 +1,64 @@
+name: Full validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - labeled
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'full-validation')
+    name: Full backend suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NASA_KEY: ci-placeholder
+      LOG_TO_FILE: "false"
+      RATE_LIMIT_BACKEND: memory
+      APP_CHECK_REQUIRED: "false"
+      CLIENT_ID_REQUIRED: "false"
+      BIGQUERY_ENABLED: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Check dependency consistency
+        run: python -m pip check
+      - name: Run full backend suite
+        run: python -m unittest discover -v
+
+  frontend:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'full-validation')
+    name: Full frontend suite and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+      - name: Install dependencies
+        run: npm ci
+      - name: Run full frontend suite
+        run: npm test
+      - name: Run frontend lint
+        run: npm run lint
+      - name: Build frontend
+        run: npm run build

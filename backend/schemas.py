@@ -18,7 +18,7 @@ class FireDetection(BaseModel):
     acq_date: str
     acq_time: str
     satellite: str
-    frp: float = Field(ge=0)
+    frp: float | None = Field(default=None, ge=0)
 
 
 class FireIncident(BaseModel):

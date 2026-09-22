@@ -90,7 +90,7 @@ def _normalize_fires(fires: pd.DataFrame) -> pd.DataFrame:
     normalized["longitude"] = pd.to_numeric(
         normalized["longitude"], errors="coerce"
     )
-    normalized["frp"] = pd.to_numeric(normalized["frp"], errors="coerce").fillna(0)
+    normalized["frp"] = pd.to_numeric(normalized["frp"], errors="coerce")
     normalized["acq_time_text"] = normalized["acq_time"].map(
         _parse_acquisition_time
     )
@@ -268,14 +268,16 @@ def _build_detection(row: object) -> FireDetection:
         acq_date=str(row.acq_date),
         acq_time=str(row.acq_time_text),
         satellite=str(row.satellite),
-        frp=float(row.frp),
+        frp=None if pd.isna(row.frp) else float(row.frp),
     )
 
 
 def _build_incident(cluster: pd.DataFrame) -> FireIncident:
     first_seen = cluster["observed_at"].min().to_pydatetime()
     last_seen = cluster["observed_at"].max().to_pydatetime()
-    total_frp = float(cluster["frp"].sum())
+    valid_frp = cluster["frp"].dropna()
+    total_frp = float(valid_frp.sum()) if not valid_frp.empty else 0.0
+    maximum_frp = float(valid_frp.max()) if not valid_frp.empty else 0.0
 
     return FireIncident(
         id=_incident_id(cluster),
@@ -287,7 +289,7 @@ def _build_incident(cluster: pd.DataFrame) -> FireIncident:
         detections=[_build_detection(row) for row in cluster.itertuples()],
         detection_count=len(cluster),
         total_frp_mw=round(total_frp, 2),
-        maximum_frp_mw=round(float(cluster["frp"].max()), 2),
+        maximum_frp_mw=round(maximum_frp, 2),
         first_detected_at=first_seen,
         last_detected_at=last_seen,
         duration_hours=round((last_seen - first_seen).total_seconds() / 3600, 2),
