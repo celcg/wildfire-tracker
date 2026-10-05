@@ -1,4 +1,4 @@
-import { INTENSITY_LEVELS } from "../config/fireConfig";
+import { INTENSITY_LEVELS } from "../config/fireConfig.js";
 
 const CONFIDENCE_LABELS = {
   l: "Low",
@@ -48,6 +48,36 @@ export function formatFrp(value) {
   }
   const power = Number(value);
   return Number.isFinite(power) ? power.toFixed(2) + " MW" : "Not available";
+}
+
+export function formatCoordinates(latitude, longitude) {
+  if (
+    latitude === null ||
+    latitude === undefined ||
+    latitude === "" ||
+    longitude === null ||
+    longitude === undefined ||
+    longitude === ""
+  ) {
+    return "Location unavailable";
+  }
+  const parsedLatitude = Number(latitude);
+  const parsedLongitude = Number(longitude);
+  if (
+    !Number.isFinite(parsedLatitude) ||
+    !Number.isFinite(parsedLongitude) ||
+    parsedLatitude < -90 ||
+    parsedLatitude > 90 ||
+    parsedLongitude < -180 ||
+    parsedLongitude > 180
+  ) {
+    return "Location unavailable";
+  }
+  return `${parsedLatitude.toFixed(4)}, ${parsedLongitude.toFixed(4)}`;
+}
+
+export function formatDetectionObservedAt(fire) {
+  return `${fire.acq_date} at ${formatAcquisitionTime(fire.acq_time)}`;
 }
 
 export function formatSyncTime(timestamp) {

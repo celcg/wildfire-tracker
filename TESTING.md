@@ -93,6 +93,7 @@ Example commands:
 ```bash
 # From frontend/
 node --test src/services/fireApi.test.js src/services/cacheStorage.test.js
+npm run test:components
 npm run lint
 ```
 
@@ -111,7 +112,9 @@ Run a complete application suite only for very important changes:
   assumptions where both artifacts must be proven together.
 
 Use `python -m unittest discover -v` for the complete backend and `npm test`,
-`npm run lint`, and `npm run build` for the complete frontend. Run only the
+`npm run lint`, and `npm run build` for the complete frontend. Run `npm run
+test:e2e` as well when a milestone or acceptance criterion changes a browser
+interaction or keyboard flow. Run only the
 affected application's full suite for an application-specific critical change;
 run both for cross-application work, milestones, and releases. A production
 frontend release also runs `npm run build:production` with the approved public
@@ -145,10 +148,13 @@ not a replacement for the relevant test file when changing a boundary itself.
 | `config/fireConfig.test.js` | API and map configuration | API URL, environment, windows, or map configuration changes |
 | `config/firebaseConfig.test.js` | App Check configuration | Firebase or production attestation changes |
 | `domain/incidentPresentation.test.js` | Cluster presentation | Cluster area visibility or incident presentation changes |
+| `domain/firePresentation.test.js` | Detection presentation | Detection time, location, FRP, or confidence presentation changes |
 | `services/cacheStorage.test.js` | Browser persistence | Cache version, key, TTL, serialization, or storage behavior changes |
 | `services/clientIdentity.test.js` | Anonymous identity | Installation UUID generation or persistence changes |
 | `services/fireApi.test.js` | HTTP contract | URLs, headers, freshness, errors, or response handling changes |
 | `services/requestSecurity.test.js` | Request security | Client ID, request ID, or App Check header changes |
+| `components/*.component.test.jsx` | Component interaction and accessibility | Semantic UI, keyboard behavior, focus, map/list synchronization, or primary accessibility states |
+| `e2e/*.spec.js` | Browser interaction | Critical keyboard, map, or cross-component browser flows |
 
 ## Escalation Rules
 

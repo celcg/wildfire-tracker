@@ -61,12 +61,12 @@ export function ControlDeck({
       </button>
 
       <div className="data-readout" aria-live="polite">
-        <span className="readout-value">{loading ? "—" : activeCount}</span>
+        <span className="readout-value">{activeCount}</span>
         <span className="readout-label">
-          {loading ? "Scanning orbit" : readoutLabel}
+          {loading ? "Updating " : ""}{readoutLabel}
         </span>
         <span className="readout-time">
-          Last sync · {formatSyncTime(lastUpdated)}
+          Retrieved · {formatSyncTime(lastUpdated)}
         </span>
       </div>
     </section>

@@ -69,3 +69,14 @@ export function formatTrend(trend) {
     decreasing: "Decreasing",
   }[trend] ?? "Unknown";
 }
+
+export function formatIncidentSatellites(incident) {
+  const satellites = [
+    ...new Set(
+      (incident?.detections ?? [])
+        .map((detection) => detection.satellite)
+        .filter(Boolean),
+    ),
+  ];
+  return satellites.length > 0 ? satellites.join(", ") : "Unknown";
+}

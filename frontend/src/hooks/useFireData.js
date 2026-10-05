@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_OBSERVATION_DAYS } from "../config/fireConfig";
 import { fetchFires } from "../services/fireApi";
 import { readCachedFires, writeCachedFires } from "../services/fireCache";
+import {
+  isCurrentRequest,
+  shouldClearVisibleData,
+  supersedeRequest,
+} from "../services/requestLifecycle";
 
-const LOAD_ERROR_MESSAGE =
-  "Fire detections could not be loaded. Please try again.";
 const FRESH_DATA = { isStale: false, sourceUpdatedAt: null };
 
 /**
@@ -19,7 +22,7 @@ export function useFireData() {
   );
   const [fires, setFires] = useState(initialCache?.data ?? []);
   const [loading, setLoading] = useState(!initialCache);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(
     initialCache?.cachedAt ?? null,
   );
@@ -27,11 +30,11 @@ export function useFireData() {
     initialCache?.metadata?.freshness ?? FRESH_DATA,
   );
   const activeRequest = useRef(null);
+  const loadedDays = useRef(initialCache ? DEFAULT_OBSERVATION_DAYS : null);
 
   const loadFires = useCallback(async (targetDays, forceRefresh = false) => {
     // Cancel first so a pending response cannot replace cached data selected now.
-    activeRequest.current?.abort();
-    activeRequest.current = null;
+    supersedeRequest(activeRequest);
 
     if (!forceRefresh) {
       const cached = readCachedFires(targetDays);
@@ -41,16 +44,20 @@ export function useFireData() {
         setFires(cached.data);
         setFreshness(cachedFreshness);
         setLastUpdated(cached.cachedAt);
+        loadedDays.current = targetDays;
         setLoading(false);
-        setError("");
+        setError(null);
         return { data: cached.data, freshness: cachedFreshness };
       }
     }
 
     const controller = new AbortController();
     activeRequest.current = controller;
+    if (shouldClearVisibleData(loadedDays.current, targetDays)) {
+      setFires([]);
+    }
     setLoading(true);
-    setError("");
+    setError(null);
 
     try {
       const result = await fetchFires({
@@ -59,7 +66,7 @@ export function useFireData() {
         signal: controller.signal,
       });
 
-      if (!controller.signal.aborted) {
+      if (isCurrentRequest(activeRequest, controller)) {
         const cachedAt = writeCachedFires(
           targetDays,
           result.data,
@@ -68,12 +75,12 @@ export function useFireData() {
         setFires(result.data);
         setFreshness(result.freshness);
         setLastUpdated(cachedAt);
+        loadedDays.current = targetDays;
         return result;
       }
     } catch (requestError) {
-      if (requestError.name !== "AbortError") {
-        setError(LOAD_ERROR_MESSAGE);
-        console.error("Fire data request failed:", requestError);
+      if (isCurrentRequest(activeRequest, controller)) {
+        setError(requestError);
       }
       return null;
     } finally {
@@ -83,20 +90,6 @@ export function useFireData() {
         setLoading(false);
       }
     }
-  }, []);
-
-  const replaceFires = useCallback((targetDays, data, nextFreshness) => {
-    // A cluster refresh carries the same source detections, so reuse that
-    // response instead of spending a second API and NASA request.
-    activeRequest.current?.abort();
-    activeRequest.current = null;
-
-    const cachedAt = writeCachedFires(targetDays, data, nextFreshness);
-    setFires(data);
-    setFreshness(nextFreshness);
-    setLastUpdated(cachedAt);
-    setLoading(false);
-    setError("");
   }, []);
 
   useEffect(() => {
@@ -112,7 +105,7 @@ export function useFireData() {
 
     return () => {
       window.clearTimeout(initialRequestTimer);
-      activeRequest.current?.abort();
+      supersedeRequest(activeRequest);
     };
   }, [initialCache, loadFires]);
 
@@ -123,6 +116,5 @@ export function useFireData() {
     lastUpdated,
     loadFires,
     loading,
-    replaceFires,
   };
 }

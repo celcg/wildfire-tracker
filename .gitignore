@@ -16,6 +16,8 @@ node_modules/
 dist/
 .vite/
 .firebase/
+playwright-report/
+test-results/
 
 # Editors and operating systems
 .idea/

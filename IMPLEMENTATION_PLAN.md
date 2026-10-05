@@ -1,6 +1,6 @@
 # Wildfire Tracker Implementation Plan
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 
 ## Purpose
 
@@ -65,13 +65,13 @@ the final change summary.
 
 ## Current Focus
 
-**Next: Milestone 1, improve the core map experience.**
+**Next: Milestone 1.3, add filtering and sorting.**
 
-Milestone 0 is implemented and verified locally. NASA transport, validation,
-SQL rendering, BigQuery persistence, and public response compatibility now have
-aligned tests; clean backend and frontend installs pass their complete checks.
-The initial GitHub workflow intentionally has no dependency cache. Enable caches
-only after its first hosted run succeeds once the changes are committed.
+Milestone 0 and Steps 1.1–1.2 are implemented and verified locally. The live map
+has explicit request states, independent parallel refresh, and an accessible
+record explorer synchronized with map selection and keyboard focus. The initial
+GitHub workflow intentionally has no dependency cache. Enable caches only after
+its first hosted run succeeds once the changes are committed.
 
 Current risks carried into later milestones:
 
@@ -201,51 +201,51 @@ Acceptance criteria:
 
 ### 1.1 Make Data States Explicit
 
-- [ ] Decouple manual detection refresh from `/incidents`; refresh the active
-  resource without making it depend on the inactive resource's success.
-- [ ] Preserve the currently visible successful dataset when a refresh fails.
-- [ ] Add a map loading state and expose `aria-busy` without hiding cached data.
-- [ ] Add a zero-results state that names the selected observation window and
+- [x] Decouple manual detection refresh from `/incidents`; refresh both resources
+  in parallel without making either depend on the other's success.
+- [x] Preserve the currently visible successful dataset when a refresh fails.
+- [x] Add a map loading state and expose `aria-busy` without hiding cached data.
+- [x] Add a zero-results state that names the selected observation window and
   clarifies that no satellite detections were returned.
-- [ ] Distinguish offline, rate-limit, service, and malformed-response errors.
-- [ ] Parse `Retry-After` and show a retry countdown for rate-limit or cold-cache
+- [x] Distinguish offline, rate-limit, service, and malformed-response errors.
+- [x] Parse `Retry-After` and show a retry countdown for rate-limit or cold-cache
   backoff responses.
-- [ ] Expose the sanitized request ID in error details for support correlation.
-- [ ] Label retrieval time separately from source-data age.
-- [ ] Decide whether valid cached data should revalidate in the background and
+- [x] Expose the sanitized request ID in error details for support correlation.
+- [x] Label retrieval time separately from source-data age.
+- [x] Decide whether valid cached data should revalidate in the background and
   document the request-volume tradeoff before implementation.
 
 Tests:
 
-- [ ] Test refresh success and failure independently for each layer.
-- [ ] Test request cancellation and stale response races.
-- [ ] Test empty, loading, stale, offline, rate-limited, and malformed states.
-- [ ] Test that a failed refresh does not erase visible data.
+- [x] Test parallel refresh success and independent failure for both layers.
+- [x] Test request cancellation and stale response races.
+- [x] Test empty, loading, stale, offline, rate-limited, and malformed states.
+- [x] Test that a failed refresh does not erase visible data.
 
 Acceptance criteria:
 
 - Every request state has visible and accessible feedback.
-- The raw detection layer remains refreshable when clustering fails.
+- The raw detection layer still refreshes when clustering fails.
 - Error handling does not disclose sensitive upstream details.
 
 ### 1.2 Add An Accessible Data Explorer
 
-- [ ] Define the minimum list fields for detections and clusters: observed time,
+- [x] Define the minimum list fields for detections and clusters: observed time,
   confidence, satellite, FRP, location, persistence, and trend where available.
-- [ ] Add a semantic list or table beside or below the map with a mobile layout.
-- [ ] Synchronize list selection with map pan, zoom, and popup focus.
-- [ ] Provide a keyboard action to return from the map to the selected row.
-- [ ] Give the map an accessible name and concise keyboard instructions.
-- [ ] Add a skip link to the data explorer or main map content.
-- [ ] Ensure selection, confidence, FRP, and trend never rely on color alone.
-- [ ] Raise supporting text sizes that are too small for comfortable reading.
-- [ ] Add forced-colors styles for controls, selections, and map-adjacent data.
+- [x] Add a semantic list or table beside or below the map with a mobile layout.
+- [x] Synchronize list selection with map pan, zoom, and popup focus.
+- [x] Provide a keyboard action to return from the map to the selected row.
+- [x] Give the map an accessible name and concise keyboard instructions.
+- [x] Add a skip link to the data explorer or main map content.
+- [x] Ensure selection, confidence, FRP, and trend never rely on color alone.
+- [x] Raise supporting text sizes that are too small for comfortable reading.
+- [x] Add forced-colors styles for controls, selections, and map-adjacent data.
 
 Tests:
 
-- [ ] Add component tests for keyboard selection and map/list synchronization.
-- [ ] Add automated accessibility checks for the primary page states.
-- [ ] Add a browser smoke test for keyboard-only detection exploration.
+- [x] Add component tests for keyboard selection and map/list synchronization.
+- [x] Add automated accessibility checks for the primary page states.
+- [x] Add a browser smoke test for keyboard-only detection exploration.
 
 Acceptance criteria:
 
@@ -849,6 +849,10 @@ research justifies them.
 | 2026-09-22 | Cloud Run continues to use source builds with one Uvicorn worker. | This preserves the current deployment model and avoids duplicating process-local NASA cache and coordination state. |
 | 2026-09-22 | The first validation workflow ships without dependency caching. | A hosted uncached run must establish the baseline before cache behavior is introduced. |
 | 2026-09-22 | Ordinary changes run small smoke suites; most tests are reserved for very important changes. | Proportionate verification keeps minor work fast while retaining full validation for high-blast-radius changes and releases. |
+| 2026-09-23 | Valid browser cache entries remain cache-first without background revalidation. | The two-hour cache limits automatic public API and NASA request volume; users can explicitly refresh both layers when newer data is needed. |
+| 2026-09-23 | Manual refresh updates detections and clusters in parallel. | Users expect both layers to be current after one explicit refresh; independent settled results prevent either endpoint from blocking the other's update. |
+| 2026-09-23 | The accessible explorer is a semantic observation log below the map, with shared selection and explicit focus return. | It exposes popup-equivalent information without requiring map use while retaining the map as spatial context instead of duplicating it in generic cards. |
+| 2026-09-23 | Component accessibility uses Vitest, Testing Library, jsdom, and axe-core; critical keyboard flow uses Playwright Chromium. | Node's unit runner cannot execute JSX interactions or validate real browser focus and fragment navigation. |
 
 ## Plan Change Log
 
@@ -860,3 +864,6 @@ research justifies them.
 | 2026-09-22 | Added a cluster calculation and BigQuery storage review, plus a wind-at-each-active-focus milestone before production operations; renumbered later milestones. |
 | 2026-09-22 | Completed Milestone 0 locally: stabilized NASA and BigQuery boundaries, added focused tests and CI, pinned runtimes and dependency locks, validated production configuration, and documented builds and deployment. |
 | 2026-09-22 | Classified verification into five levels, changed default CI to smoke validation, and added label/manual full-validation workflows for very important changes. |
+| 2026-09-23 | Completed and verified Step 1.1 with independent layer refresh, retained-data loading, explicit request states, retry countdowns, and sanitized support IDs. |
+| 2026-09-23 | Changed manual refresh to update both map layers in parallel while preserving independent success and failure behavior. |
+| 2026-09-23 | Completed and verified Step 1.2 with a responsive semantic explorer, map/list synchronization, keyboard focus recovery, forced-colors support, axe checks, and a browser keyboard smoke test. |

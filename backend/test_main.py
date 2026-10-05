@@ -1,6 +1,6 @@
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from time import sleep
 from unittest.mock import patch
 
@@ -13,14 +13,18 @@ import fire_data
 from rate_limit import rate_limiter
 
 
+_SAMPLE_NOW = datetime.now(timezone.utc)
+_SAMPLE_ONE_HOUR_AGO = _SAMPLE_NOW - timedelta(hours=1)
+_SAMPLE_TWO_HOURS_AGO = _SAMPLE_NOW - timedelta(hours=2)
+
 SAMPLE_FIRES = pd.DataFrame(
     [
         {
             "latitude": 42.1,
             "longitude": -8.6,
             "confidence": "high",
-            "acq_date": datetime.now(timezone.utc).date().isoformat(),
-            "acq_time": 1200,
+            "acq_date": _SAMPLE_ONE_HOUR_AGO.date().isoformat(),
+            "acq_time": int(_SAMPLE_ONE_HOUR_AGO.strftime("%H%M")),
             "satellite": "NOAA-20",
             "frp": 10.5,
         },
@@ -28,8 +32,8 @@ SAMPLE_FIRES = pd.DataFrame(
             "latitude": 40.4,
             "longitude": -3.7,
             "confidence": "nominal",
-            "acq_date": datetime.now(timezone.utc).date().isoformat(),
-            "acq_time": 930,
+            "acq_date": _SAMPLE_TWO_HOURS_AGO.date().isoformat(),
+            "acq_time": int(_SAMPLE_TWO_HOURS_AGO.strftime("%H%M")),
             "satellite": "NOAA-20",
             "frp": 20.5,
         },

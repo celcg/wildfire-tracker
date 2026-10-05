@@ -2,6 +2,45 @@ import { API_URL } from "../config/fireConfig.js";
 import { buildRequestSecurityHeaders } from "./requestSecurity.js";
 
 const REQUEST_ID_HEADER = "X-Request-ID";
+const REQUEST_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export class FireApiError extends Error {
+  constructor(kind, options = {}) {
+    super(kind);
+    this.name = "FireApiError";
+    this.kind = kind;
+    this.requestId = sanitizeRequestId(options.requestId);
+    this.retryAfterSeconds = options.retryAfterSeconds ?? null;
+    this.status = options.status ?? null;
+  }
+}
+
+export function sanitizeRequestId(requestId) {
+  return typeof requestId === "string" && REQUEST_ID_PATTERN.test(requestId)
+    ? requestId
+    : null;
+}
+
+export function parseRetryAfter(value, now = Date.now()) {
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds);
+  }
+
+  const retryAt = Date.parse(value);
+  return Number.isFinite(retryAt)
+    ? Math.max(0, Math.ceil((retryAt - now) / 1000))
+    : null;
+}
+
+export function classifyNetworkError(online = globalThis.navigator?.onLine) {
+  return online === false ? "offline" : "service";
+}
 
 function readFreshness(response) {
   const isStale = response.headers.get("X-Data-Stale") === "true";
@@ -14,25 +53,14 @@ function readFreshness(response) {
   };
 }
 
-function attachRequestId(error, requestId) {
-  if (error && typeof error === "object") {
-    try {
-      error.requestId = requestId;
-    } catch {
-      // Preserve immutable browser errors instead of masking the root failure.
-    }
-  }
-  return error;
-}
-
-async function requestJson({ path, errorLabel, signal }) {
+async function requestJson({ path, signal }) {
   // A per-request identifier lets Cloud Logging connect a UI failure with the
   // exact API and NASA/cache events that produced it.
   const clientRequestId = globalThis.crypto.randomUUID();
-  const securityHeaders = await buildRequestSecurityHeaders();
   let response;
 
   try {
+    const securityHeaders = await buildRequestSecurityHeaders();
     response = await fetch(API_URL + path, {
       headers: {
         Accept: "application/json",
@@ -42,15 +70,21 @@ async function requestJson({ path, errorLabel, signal }) {
       signal,
     });
   } catch (error) {
-    throw attachRequestId(error, clientRequestId);
+    if (error?.name === "AbortError") {
+      throw error;
+    }
+    throw new FireApiError(classifyNetworkError(), {
+      requestId: clientRequestId,
+    });
   }
 
   const requestId = response.headers.get(REQUEST_ID_HEADER) ?? clientRequestId;
   if (!response.ok) {
-    throw attachRequestId(
-      new Error(errorLabel + " (" + response.status + ")"),
+    throw new FireApiError(response.status === 429 ? "rate-limit" : "service", {
       requestId,
-    );
+      retryAfterSeconds: parseRetryAfter(response.headers.get("Retry-After")),
+      status: response.status,
+    });
   }
 
   try {
@@ -59,8 +93,8 @@ async function requestJson({ path, errorLabel, signal }) {
       freshness: readFreshness(response),
       requestId,
     };
-  } catch (error) {
-    throw attachRequestId(error, requestId);
+  } catch {
+    throw new FireApiError("malformed", { requestId });
   }
 }
 
@@ -77,16 +111,12 @@ export async function fetchFires({ days, forceRefresh, signal }) {
 
   const result = await requestJson({
     path: "/fires?" + searchParams.toString(),
-    errorLabel: "API request failed",
     signal,
   });
 
   // Fail at the service boundary rather than letting invalid data break Leaflet.
   if (!Array.isArray(result.data)) {
-    throw attachRequestId(
-      new TypeError("The fire API returned an invalid response"),
-      result.requestId,
-    );
+    throw new FireApiError("malformed", { requestId: result.requestId });
   }
 
   return result;
@@ -101,7 +131,6 @@ export async function fetchIncidents({ days, forceRefresh, signal }) {
 
   const result = await requestJson({
     path: "/incidents?" + searchParams.toString(),
-    errorLabel: "Incident API request failed",
     signal,
   });
   const hasValidAreas = result.data?.incidents?.every(
@@ -113,10 +142,7 @@ export async function fetchIncidents({ days, forceRefresh, signal }) {
   );
 
   if (!Array.isArray(result.data?.incidents) || !hasValidAreas) {
-    throw attachRequestId(
-      new TypeError("The incident API returned an invalid response"),
-      result.requestId,
-    );
+    throw new FireApiError("malformed", { requestId: result.requestId });
   }
 
   return result;

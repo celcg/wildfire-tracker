@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchFires } from "./fireApi.js";
+import {
+  classifyNetworkError,
+  fetchFires,
+  parseRetryAfter,
+  sanitizeRequestId,
+} from "./fireApi.js";
 
 const originalDateNow = Date.now;
 const originalFetch = globalThis.fetch;
@@ -60,8 +65,72 @@ test("attaches the correlated request ID to HTTP errors", async () => {
     fetchFires({ days: "1", forceRefresh: true }),
     (error) => {
       assert.equal(error.requestId, "b856861c-c01c-40e7-8aca-3c4a6fe87e3f");
-      assert.match(error.message, /503/);
+      assert.equal(error.kind, "service");
+      assert.equal(error.status, 503);
       return true;
     },
   );
+});
+
+test("sanitizes transport failures without exposing their details", async () => {
+  globalThis.fetch = async () => {
+    throw new TypeError("secret upstream URL");
+  };
+
+  await assert.rejects(
+    fetchFires({ days: "1", forceRefresh: false }),
+    (error) => {
+      assert.equal(error.kind, "service");
+      assert.doesNotMatch(error.message, /secret|URL/);
+      assert.match(error.requestId, /^[0-9a-f-]{36}$/);
+      return true;
+    },
+  );
+});
+
+test("uses browser connectivity to distinguish an offline failure", () => {
+  assert.equal(classifyNetworkError(false), "offline");
+  assert.equal(classifyNetworkError(true), "service");
+});
+
+test("classifies rate limits and parses Retry-After", async () => {
+  globalThis.fetch = async () =>
+    new Response(null, {
+      status: 429,
+      headers: {
+        "Retry-After": "12",
+        "X-Request-ID": "b856861c-c01c-40e7-8aca-3c4a6fe87e3f",
+      },
+    });
+
+  await assert.rejects(
+    fetchFires({ days: "1", forceRefresh: true }),
+    (error) => {
+      assert.equal(error.kind, "rate-limit");
+      assert.equal(error.retryAfterSeconds, 12);
+      return true;
+    },
+  );
+});
+
+test("classifies invalid JSON and invalid response shapes as malformed", async () => {
+  globalThis.fetch = async () => new Response("not json");
+  await assert.rejects(
+    fetchFires({ days: "1", forceRefresh: false }),
+    (error) => error.kind === "malformed",
+  );
+
+  globalThis.fetch = async () => new Response(JSON.stringify({ fires: [] }));
+  await assert.rejects(
+    fetchFires({ days: "1", forceRefresh: false }),
+    (error) => error.kind === "malformed",
+  );
+});
+
+test("parses HTTP-date retry values and rejects unsafe request IDs", () => {
+  assert.equal(
+    parseRetryAfter("Thu, 01 Jan 1970 00:00:20 GMT", 10_000),
+    10,
+  );
+  assert.equal(sanitizeRequestId("upstream said: secret"), null);
 });

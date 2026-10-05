@@ -6,6 +6,21 @@
   padding: 34px 0 28px;
 }
 
+.skip-link {
+  position: fixed;
+  z-index: 2000;
+  top: 12px;
+  left: 12px;
+  padding: 10px 14px;
+  transform: translateY(-150%);
+  border: 2px solid var(--cyan-300);
+  color: var(--canopy-950);
+  background: var(--cyan-300);
+  font-weight: 700;
+}
+
+.skip-link:focus { transform: translateY(0); }
+
 /* Mission header -----------------------------------------------------------
    The flame reads as a thermal signature rather than a generic fire icon. */
 .hero {
@@ -363,8 +378,8 @@ h1 span {
   line-height: 1;
 }
 
-.readout-label { align-self: end; color: var(--mist-100); font-size: 0.65rem; }
-.readout-time { align-self: start; margin-top: 3px; color: var(--mist-300); font-size: 0.57rem; }
+.readout-label { align-self: end; color: var(--mist-100); font-size: 0.72rem; }
+.readout-time { align-self: start; margin-top: 3px; color: var(--mist-300); font-size: 0.7rem; }
 
 /* Request feedback ---------------------------------------------------------
    The colored edge remains distinguishable without relying on color alone. */
@@ -387,6 +402,16 @@ h1 span {
   border: 1px solid var(--ember-400);
   border-radius: 50%;
   color: var(--ember-400);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.error p { margin: 0; }
+.error p + p { margin-top: 3px; }
+.error small {
+  display: block;
+  margin-top: 5px;
+  color: var(--mist-300);
   font-family: var(--font-mono);
   font-size: 0.72rem;
 }
@@ -424,7 +449,7 @@ h1 span {
   margin-bottom: 2px;
   color: var(--cyan-300);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -472,7 +497,7 @@ h1 span {
 .incident-summary dt {
   margin-top: 4px;
   color: var(--mist-300);
-  font-size: 0.61rem;
+  font-size: 0.72rem;
 }
 
 .incident-summary dd {
@@ -512,7 +537,7 @@ h1 span {
 .map-section.is-visible .intensity-key { transition-delay: 580ms; }
 .map-section.is-visible .data-guide { transition-delay: 700ms; }
 
-.section-index { margin-bottom: 6px; color: var(--mint-300); font-size: 0.63rem; }
+.section-index { margin-bottom: 6px; color: var(--mint-300); font-size: 0.72rem; }
 
 h2 {
   margin-bottom: 0;
@@ -530,7 +555,7 @@ h2 {
   border: 1px solid var(--line);
   color: var(--mist-300);
   background: rgba(18, 11, 8, 0.8);
-  font-size: 0.59rem;
+  font-size: 0.7rem;
 }
 
 .source-badge span {
@@ -551,6 +576,14 @@ h2 {
   transition: clip-path 950ms 120ms cubic-bezier(0.77, 0, 0.18, 1);
 }
 
+.map-instructions {
+  max-width: 720px;
+  margin: -6px 0 16px;
+  color: var(--mist-300);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .map-frame::after {
   position: absolute;
   z-index: 600;
@@ -563,6 +596,49 @@ h2 {
   content: "";
   opacity: 0;
   pointer-events: none;
+}
+
+.map-loading {
+  position: absolute;
+  z-index: 700;
+  top: 18px;
+  left: 50%;
+  margin: 0;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border: 1px solid var(--cyan-300);
+  color: var(--mist-100);
+  background: rgba(9, 6, 5, 0.9);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.return-to-result {
+  position: absolute;
+  z-index: 700;
+  top: 18px;
+  right: 18px;
+  min-height: 38px;
+  padding: 7px 11px;
+  border: 1px solid var(--cyan-300);
+  color: var(--mist-100);
+  background: rgba(9, 6, 5, 0.92);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.return-to-result:focus-visible {
+  outline: 2px solid var(--mist-100);
+  outline-offset: 2px;
+}
+
+.empty-state {
+  margin: 14px 0 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--cyan-300);
+  color: var(--mist-100);
+  background: rgba(255, 209, 102, 0.07);
 }
 
 .map-section.is-visible .map-frame {
@@ -650,14 +726,14 @@ h2 {
   margin: 4px 0 0;
   color: var(--mist-300);
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.72rem;
 }
 
 .incident-note {
   max-width: 240px;
   margin: 10px 0 0;
   color: var(--mist-300);
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   line-height: 1.45;
 }
 
@@ -725,7 +801,7 @@ h2 {
 
 .key-title {
   color: var(--mist-300);
-  font-size: 0.61rem;
+  font-size: 0.72rem;
 }
 
 .key-level {
@@ -761,7 +837,135 @@ h2 {
 .key-level small {
   align-self: start;
   color: var(--mist-300);
-  font-size: 0.65rem;
+  font-size: 0.72rem;
+}
+
+/* Result explorer -----------------------------------------------------------
+   Records form one continuous observation log rather than detached cards. */
+.data-explorer {
+  margin-top: 54px;
+  scroll-margin-top: 20px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.explorer-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0 18px;
+}
+
+.explorer-heading > p {
+  margin: 0 0 5px;
+  color: var(--mist-300);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.result-list {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  list-style: none;
+}
+
+.result-list > li {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(18, 11, 8, 0.54);
+}
+
+.result-list > li:last-child { border-bottom: 0; }
+
+.result-list > li.is-selected {
+  border-left: 5px double var(--cyan-300);
+  background: rgba(255, 209, 102, 0.1);
+}
+
+.result-list article { padding: 18px 20px; }
+
+.result-heading {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.result-sequence {
+  color: var(--mint-300);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-heading h3 {
+  margin: 0;
+  color: var(--mist-100);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.result-heading p {
+  margin: 3px 0 0;
+  color: var(--mist-300);
+  font-size: 0.8rem;
+}
+
+.result-heading button {
+  min-height: 42px;
+  padding: 8px 13px;
+  border: 1px solid var(--line-strong);
+  color: var(--mist-100);
+  background: transparent;
+  cursor: pointer;
+}
+
+.result-heading button[aria-pressed="true"] {
+  border-width: 2px;
+  border-color: var(--cyan-300);
+  color: var(--cyan-300);
+}
+
+.result-heading button:hover { background: rgba(255, 148, 24, 0.1); }
+.result-heading button:focus-visible {
+  outline: 2px solid var(--cyan-300);
+  outline-offset: 3px;
+}
+
+.result-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 16px 0 0 56px;
+  border-top: 1px solid var(--line);
+}
+
+.result-fields div {
+  min-width: 0;
+  padding: 11px 12px 0 0;
+}
+
+.result-fields dt {
+  color: var(--mist-300);
+  font-size: 0.72rem;
+}
+
+.result-fields dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--mist-100);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.explorer-empty {
+  padding: 24px;
+  border: 1px solid var(--line);
+  color: var(--mist-300);
+  background: rgba(18, 11, 8, 0.54);
 }
 
 /* Data glossary ------------------------------------------------------------
@@ -882,7 +1086,7 @@ h2 {
 .privacy-notice summary small {
   color: var(--mint-300);
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -950,7 +1154,7 @@ h2 {
   padding-top: 18px;
   border-top: 1px solid var(--line);
   color: rgba(197, 168, 154, 0.62);
-  font-size: 0.56rem;
+  font-size: 0.7rem;
 }
 
 /* Motion -------------------------------------------------------------------
@@ -997,6 +1201,7 @@ h2 {
   .intensity-key { grid-template-columns: repeat(4, 1fr); }
   .key-title { grid-column: 1 / -1; min-height: 38px; border-right: 0; border-bottom: 1px solid var(--line); }
   .guide-content { grid-template-columns: 1fr; gap: 18px; }
+  .result-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
@@ -1022,9 +1227,35 @@ h2 {
   .key-level { border-bottom: 1px solid var(--line); }
   .key-level:nth-last-child(-n + 2) { border-bottom: 0; }
   .guide-content { padding-inline: 16px; }
+  .explorer-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .result-list article { padding: 16px; }
+  .result-heading { grid-template-columns: 32px minmax(0, 1fr); }
+  .result-heading button { grid-column: 1 / -1; width: 100%; }
+  .result-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-left: 0; }
+  .return-to-result { top: auto; right: 18px; bottom: 30px; }
   .privacy-notice summary { align-items: flex-start; flex-direction: column; gap: 4px; padding-block: 14px; }
   .privacy-content { grid-template-columns: 1fr; padding-inline: 16px; }
   .site-footer { align-items: flex-start; flex-direction: column; gap: 8px; }
+}
+
+@media (forced-colors: active) {
+  .skip-link,
+  .refresh-button,
+  .layer-switch button.is-active,
+  .result-heading button[aria-pressed="true"],
+  .return-to-result {
+    border: 2px solid ButtonText;
+    color: ButtonText;
+    background: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .result-list > li.is-selected {
+    border: 3px double Highlight;
+  }
+
+  .fire-map path { stroke: CanvasText !important; }
+  .fire-map path.leaflet-interactive:focus { stroke: Highlight !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

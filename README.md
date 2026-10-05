@@ -29,6 +29,10 @@ The project demonstrates API design, third-party data integration, cloud deploym
 
 ## Architecture
 
+The detailed component boundaries, runtime contracts, request and ingestion
+flows, architectural patterns, invariants, and known debt are documented in
+[`architecture.md`](architecture.md).
+
 ```mermaid
 flowchart LR
     User[User] --> UI

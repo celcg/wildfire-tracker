@@ -8,13 +8,16 @@
     "npm": "10.9.4"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:production": "node scripts/validateProductionEnv.js && vite build",
+    "dev": "vite --configLoader native",
+    "build": "vite build --configLoader native",
+    "build:production": "node scripts/validateProductionEnv.js && vite build --configLoader native",
     "lint": "oxlint",
-    "test": "node --test",
+    "test": "npm run test:unit && npm run test:components",
+    "test:unit": "node --test",
+    "test:components": "vitest run --configLoader native",
+    "test:e2e": "playwright test",
     "test:smoke": "node --test src/config/fireConfig.test.js src/services/fireApi.test.js src/services/requestSecurity.test.js",
-    "preview": "vite preview"
+    "preview": "vite preview --configLoader native"
   },
   "dependencies": {
     "firebase": "^12.19.0",
@@ -24,10 +27,17 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "axe-core": "^4.13.0",
+    "jsdom": "^29.1.1",
     "oxlint": "^1.81.0",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

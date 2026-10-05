@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -6,6 +6,7 @@ import {
   Popup,
   TileLayer,
   Tooltip,
+  useMap,
 } from "react-leaflet";
 import {
   INCIDENT_SEVERITY_LEVELS,
@@ -29,26 +30,46 @@ import {
   hasClusterArea,
 } from "../domain/incidentPresentation";
 import { DataGuide } from "./DataGuide";
+import { MapStatus } from "./MapStatus";
 
 /**
  * Markers are the expensive part of this page. Memoization keeps them stable
  * while loading text, timestamps, or the explanatory disclosure changes.
  */
-const FireMarkers = memo(function FireMarkers({ fires }) {
+const FireMarkers = memo(function FireMarkers({
+  fires,
+  layerKeys,
+  onSelect,
+  registerLayer,
+  selectionKeys,
+  selectedKey,
+}) {
   return fires.map((fire) => {
+    const fireKey = getFireKey(fire);
+    const selectionKey = selectionKeys?.get(fireKey) ?? fireKey;
+    const layerKey = layerKeys?.get(fireKey) ?? fireKey;
     const intensity = getIntensity(fire.frp);
+    const isSelected = selectedKey === selectionKey;
+    const shouldRegister =
+      registerLayer && (!selectionKeys || layerKeys?.has(fireKey));
 
     return (
       <CircleMarker
-        key={getFireKey(fire)}
+        key={fireKey}
+        ref={
+          shouldRegister
+            ? (layerInstance) => registerLayer(layerKey, layerInstance)
+            : null
+        }
         center={[fire.latitude, fire.longitude]}
-        radius={intensity.radius}
+        eventHandlers={{ click: () => onSelect(selectionKey) }}
+        radius={intensity.radius + (isSelected ? 3 : 0)}
         pathOptions={{
           color: intensity.color,
           fillColor: intensity.color,
           fillOpacity: 0.7,
           opacity: 0.92,
-          weight: 1.5,
+          weight: isSelected ? 4 : 1.5,
         }}
       >
         <Popup>
@@ -81,7 +102,12 @@ const FireMarkers = memo(function FireMarkers({ fires }) {
   });
 });
 
-const IncidentAreas = memo(function IncidentAreas({ incidents }) {
+const IncidentAreas = memo(function IncidentAreas({
+  incidents,
+  onSelect,
+  registerLayer,
+  selectedKey,
+}) {
   return incidents
     .filter(hasClusterArea)
     .map((incident) => {
@@ -90,11 +116,14 @@ const IncidentAreas = memo(function IncidentAreas({ incidents }) {
         point.latitude,
         point.longitude,
       ]);
+      const isSelected = selectedKey === incident.id;
 
       return (
         <Polygon
           key={incident.id}
+          ref={(layerInstance) => registerLayer(incident.id, layerInstance)}
           positions={boundary}
+          eventHandlers={{ click: () => onSelect(incident.id) }}
           pathOptions={{
             className: "possible-area",
             color: severity.color,
@@ -102,7 +131,7 @@ const IncidentAreas = memo(function IncidentAreas({ incidents }) {
             fillColor: severity.color,
             fillOpacity: 0.12,
             opacity: 0.78,
-            weight: 1.5,
+            weight: isSelected ? 4 : 1.5,
           }}
         >
           {incident.detection_count > 1 ? (
@@ -157,6 +186,25 @@ const IncidentAreas = memo(function IncidentAreas({ incidents }) {
     });
 });
 
+function MapSelectionController({ selectedResult, layerInstances }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!selectedResult) {
+      return;
+    }
+
+    map.flyTo(
+      [selectedResult.latitude, selectedResult.longitude],
+      Math.max(map.getZoom(), 9),
+      { duration: 0.55 },
+    );
+    layerInstances.current.get(selectedResult.key)?.openPopup();
+  }, [layerInstances, map, selectedResult]);
+
+  return null;
+}
+
 function DetectionLegend() {
   return (
     <div className="intensity-key" aria-label="Thermal intensity scale">
@@ -199,8 +247,21 @@ function IncidentLegend() {
   );
 }
 
-export function FireMap({ fires, incidents, layer }) {
+export function FireMap({
+  fires,
+  hasError,
+  incidents,
+  layer,
+  loading,
+  onReturnToResult,
+  onSelect,
+  observationWindow,
+  selectedKey,
+}) {
   const showClusters = layer === "clusters";
+  const layerInstances = useRef(new Map());
+  const isEmpty =
+    !hasError && (showClusters ? incidents.length === 0 : fires.length === 0);
   const clusteredDetections = useMemo(
     () =>
       incidents.flatMap((incident) =>
@@ -208,9 +269,73 @@ export function FireMap({ fires, incidents, layer }) {
       ),
     [incidents],
   );
+  const clusterKeysByDetection = useMemo(
+    () =>
+      new Map(
+        incidents.flatMap((incident) =>
+          incident.detections.map((fire) => [getFireKey(fire), incident.id]),
+        ),
+      ),
+    [incidents],
+  );
+  const singletonLayerKeys = useMemo(
+    () =>
+      new Map(
+        incidents
+          .filter((incident) => !hasClusterArea(incident))
+          .flatMap((incident) => {
+            const firstDetection = incident.detections[0];
+            return firstDetection
+              ? [[getFireKey(firstDetection), incident.id]]
+              : [];
+          }),
+      ),
+    [incidents],
+  );
+  const selectedResult = useMemo(() => {
+    if (!selectedKey) {
+      return null;
+    }
+    if (showClusters) {
+      const incident = incidents.find((item) => item.id === selectedKey);
+      return incident?.center
+        ? {
+            key: incident.id,
+            latitude: incident.center.latitude,
+            longitude: incident.center.longitude,
+          }
+        : null;
+    }
+    const fire = fires.find((item) => getFireKey(item) === selectedKey);
+    return fire
+      ? {
+          key: selectedKey,
+          latitude: fire.latitude,
+          longitude: fire.longitude,
+        }
+      : null;
+  }, [fires, incidents, selectedKey, showClusters]);
+  const registerLayer = useCallback((key, layerInstance) => {
+    if (layerInstance) {
+      layerInstances.current.set(key, layerInstance);
+    } else {
+      layerInstances.current.delete(key);
+    }
+  }, []);
+  const handleMapKeyDown = (event) => {
+    if (event.key === "Escape" && selectedResult) {
+      event.preventDefault();
+      onReturnToResult();
+    }
+  };
 
   return (
-    <section className="map-section" aria-labelledby="map-title" data-reveal>
+    <section
+      className="map-section"
+      aria-busy={loading}
+      aria-labelledby="map-title"
+      data-reveal
+    >
       <div className="map-heading">
         <div>
           <p className="section-index">
@@ -226,30 +351,93 @@ export function FireMap({ fires, incidents, layer }) {
         </div>
       </div>
 
-      <div className="map-frame">
+      <p className="map-instructions" id="map-instructions">
+        Use the zoom controls or arrow keys to explore. Select a record below to
+        locate it here. Press Escape to return to the selected record.
+      </p>
+
+      <div
+        className="map-frame"
+        aria-describedby="map-instructions"
+        aria-label={
+          showClusters
+            ? "Map of possible fire cluster observation envelopes"
+            : "Map of satellite thermal detections"
+        }
+        onKeyDown={handleMapKeyDown}
+        role="region"
+      >
+        {loading ? (
+          <MapStatus
+            isEmpty={isEmpty}
+            layer={layer}
+            loading
+            observationWindow={observationWindow}
+          />
+        ) : null}
+        {selectedResult ? (
+          <button
+            className="return-to-result"
+            onClick={onReturnToResult}
+            type="button"
+          >
+            Return to selected record
+          </button>
+        ) : null}
         <MapContainer
           className="fire-map"
           center={MAP_CONFIG.center}
           zoom={MAP_CONFIG.zoom}
           scrollWheelZoom
+          tabIndex={0}
         >
+          <MapSelectionController
+            layerInstances={layerInstances}
+            selectedResult={selectedResult}
+          />
           <TileLayer
             attribution={MAP_CONFIG.attribution}
             url={MAP_CONFIG.tileUrl}
           />
           {showClusters ? (
             <>
-              <IncidentAreas incidents={incidents} />
-              <FireMarkers fires={clusteredDetections} />
+              <IncidentAreas
+                incidents={incidents}
+                onSelect={onSelect}
+                registerLayer={registerLayer}
+                selectedKey={selectedKey}
+              />
+              <FireMarkers
+                fires={clusteredDetections}
+                layerKeys={singletonLayerKeys}
+                onSelect={onSelect}
+                registerLayer={registerLayer}
+                selectionKeys={clusterKeysByDetection}
+                selectedKey={selectedKey}
+              />
             </>
           ) : (
-            <FireMarkers fires={fires} />
+            <FireMarkers
+              fires={fires}
+              onSelect={onSelect}
+              registerLayer={registerLayer}
+              selectedKey={selectedKey}
+            />
           )}
         </MapContainer>
         {/* Corner guides reinforce the satellite-viewfinder metaphor. */}
         <div className="map-corner map-corner-top" aria-hidden="true" />
         <div className="map-corner map-corner-bottom" aria-hidden="true" />
       </div>
+
+      {!loading ? (
+        <MapStatus
+          isEmpty={isEmpty}
+          layer={layer}
+          loading={false}
+          observationWindow={observationWindow}
+        />
+      ) : null}
 
       {showClusters ? <IncidentLegend /> : <DetectionLegend />}
       <DataGuide showClusters={showClusters} />

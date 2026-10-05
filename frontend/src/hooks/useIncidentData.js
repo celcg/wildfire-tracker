@@ -4,9 +4,12 @@ import {
   readCachedIncidents,
   writeCachedIncidents,
 } from "../services/incidentCache";
+import {
+  isCurrentRequest,
+  shouldClearVisibleData,
+  supersedeRequest,
+} from "../services/requestLifecycle";
 
-const LOAD_ERROR_MESSAGE =
-  "Possible fire clusters could not be loaded. Please try again.";
 const FRESH_DATA = { isStale: false, sourceUpdatedAt: null };
 
 /**
@@ -19,15 +22,14 @@ export function useIncidentData() {
   const [collection, setCollection] = useState(null);
   const loadedDays = useRef(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [freshness, setFreshness] = useState(FRESH_DATA);
   const activeRequest = useRef(null);
 
   const loadIncidents = useCallback(
     async (targetDays, forceRefresh = false) => {
-      activeRequest.current?.abort();
-      activeRequest.current = null;
+      supersedeRequest(activeRequest);
 
       if (!forceRefresh) {
         const cached = readCachedIncidents(targetDays);
@@ -39,7 +41,7 @@ export function useIncidentData() {
           loadedDays.current = targetDays;
           setLastUpdated(cached.cachedAt);
           setLoading(false);
-          setError("");
+          setError(null);
           return { data: cached.data, freshness: cachedFreshness };
         }
       }
@@ -47,11 +49,11 @@ export function useIncidentData() {
       const controller = new AbortController();
       activeRequest.current = controller;
 
-      if (loadedDays.current !== targetDays) {
+      if (shouldClearVisibleData(loadedDays.current, targetDays)) {
         setCollection(null);
       }
       setLoading(true);
-      setError("");
+      setError(null);
 
       try {
         const result = await fetchIncidents({
@@ -60,7 +62,7 @@ export function useIncidentData() {
           signal: controller.signal,
         });
 
-        if (!controller.signal.aborted) {
+        if (isCurrentRequest(activeRequest, controller)) {
           const cachedAt = writeCachedIncidents(
             targetDays,
             result.data,
@@ -73,9 +75,8 @@ export function useIncidentData() {
           return result;
         }
       } catch (requestError) {
-        if (requestError.name !== "AbortError") {
-          setError(LOAD_ERROR_MESSAGE);
-          console.error("Incident data request failed:", requestError);
+        if (isCurrentRequest(activeRequest, controller)) {
+          setError(requestError);
         }
         return null;
       } finally {
@@ -90,7 +91,7 @@ export function useIncidentData() {
 
   useEffect(
     () => () => {
-      activeRequest.current?.abort();
+      supersedeRequest(activeRequest);
     },
     [],
   );
