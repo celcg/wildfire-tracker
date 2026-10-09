@@ -26,6 +26,8 @@ function App() {
   const [layer, setLayer] = useState("detections");
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
+  const [mapNavigationRequest, setMapNavigationRequest] = useState(0);
+  const mapFocusRef = useRef(null);
   const selectedResultRef = useRef(null);
 
   // App composes feature sections; networking and browser APIs stay in hooks.
@@ -81,6 +83,23 @@ function App() {
     }
   };
 
+  const showResultOnMap = (resultKey) => {
+    setSelectedKey(resultKey);
+    // Navigation is a separate action from selection: selecting the same
+    // record again must still reveal the map and reopen its popup.
+    setMapNavigationRequest((request) => request + 1);
+    mapFocusRef.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    mapFocusRef.current?.focus?.({ preventScroll: true });
+  };
+
+  const returnToSelectedResult = () => {
+    selectedResultRef.current?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "nearest",
+    });
+    selectedResultRef.current?.focus?.({ preventScroll: true });
+  };
+
   return (
     <main className="app-shell">
       <a className="skip-link" href="#data-explorer">
@@ -121,7 +140,9 @@ function App() {
         hasError={Boolean(activeError)}
         layer={layer}
         loading={activeLoading}
-        onReturnToResult={() => selectedResultRef.current?.focus()}
+        mapFocusRef={mapFocusRef}
+        mapNavigationRequest={mapNavigationRequest}
+        onReturnToResult={returnToSelectedResult}
         onSelect={setSelectedKey}
         observationWindow={observationWindow}
         selectedKey={selectedKey}
@@ -131,7 +152,7 @@ function App() {
         fires={fireData.fires}
         incidents={activeCollection?.incidents ?? EMPTY_INCIDENTS}
         layer={layer}
-        onSelect={setSelectedKey}
+        onShowOnMap={showResultOnMap}
         selectedKey={selectedKey}
         selectedResultRef={selectedResultRef}
       />

@@ -34,8 +34,20 @@ test("a keyboard user can skip to and select a detection", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Show on map" })).toBeFocused();
   await page.keyboard.press("Enter");
 
-  await expect(page.getByRole("button", { name: "Selected on map" })).toBeFocused();
+  const mapRegion = page.getByRole("region", {
+    name: "Map of satellite thermal detections",
+  });
+  await expect(mapRegion).toBeFocused();
   await expect(
     page.getByRole("button", { name: "Return to selected record" }),
   ).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  const selectedRecord = page.getByRole("button", {
+    name: "Show on map again",
+  });
+  await expect(selectedRecord).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(mapRegion).toBeFocused();
 });

@@ -28,7 +28,7 @@ function ResultFields({ fields }) {
   );
 }
 
-function DetectionResult({ fire, index, isSelected, onSelect, selectedRef }) {
+function DetectionResult({ fire, index, isSelected, onShowOnMap, selectedRef }) {
   const resultKey = getFireKey(fire);
   const intensity = getIntensity(fire.frp);
 
@@ -45,11 +45,11 @@ function DetectionResult({ fire, index, isSelected, onSelect, selectedRef }) {
           </div>
           <button
             aria-pressed={isSelected}
-            onClick={() => onSelect(resultKey)}
+            onClick={() => onShowOnMap(resultKey)}
             ref={isSelected ? selectedRef : null}
             type="button"
           >
-            {isSelected ? "Selected on map" : "Show on map"}
+            {isSelected ? "Show on map again" : "Show on map"}
           </button>
         </div>
         <ResultFields
@@ -66,7 +66,13 @@ function DetectionResult({ fire, index, isSelected, onSelect, selectedRef }) {
   );
 }
 
-function IncidentResult({ incident, index, isSelected, onSelect, selectedRef }) {
+function IncidentResult({
+  incident,
+  index,
+  isSelected,
+  onShowOnMap,
+  selectedRef,
+}) {
   const severity = getIncidentSeverity(incident.total_frp_mw);
 
   return (
@@ -88,11 +94,11 @@ function IncidentResult({ incident, index, isSelected, onSelect, selectedRef }) 
           </div>
           <button
             aria-pressed={isSelected}
-            onClick={() => onSelect(incident.id)}
+            onClick={() => onShowOnMap(incident.id)}
             ref={isSelected ? selectedRef : null}
             type="button"
           >
-            {isSelected ? "Selected on map" : "Show on map"}
+            {isSelected ? "Show on map again" : "Show on map"}
           </button>
         </div>
         <ResultFields
@@ -123,12 +129,19 @@ export function DataExplorer({
   fires,
   incidents,
   layer,
-  onSelect,
+  onShowOnMap,
   selectedKey,
   selectedResultRef,
 }) {
   const showClusters = layer === "clusters";
   const results = showClusters ? incidents : fires;
+
+  const handleExplorerKeyDown = (event) => {
+    if (event.key === "Escape" && selectedKey) {
+      event.preventDefault();
+      onShowOnMap(selectedKey);
+    }
+  };
 
   useEffect(() => {
     selectedResultRef.current?.scrollIntoView?.({ block: "nearest" });
@@ -139,6 +152,7 @@ export function DataExplorer({
       className="data-explorer"
       id="data-explorer"
       aria-labelledby="explorer-title"
+      onKeyDown={handleExplorerKeyDown}
       tabIndex={-1}
     >
       <header className="explorer-heading">
@@ -162,7 +176,7 @@ export function DataExplorer({
                 index={index}
                 isSelected={selectedKey === result.id}
                 key={result.id}
-                onSelect={onSelect}
+                onShowOnMap={onShowOnMap}
                 selectedRef={selectedResultRef}
               />
             ) : (
@@ -171,7 +185,7 @@ export function DataExplorer({
                 index={index}
                 isSelected={selectedKey === getFireKey(result)}
                 key={getFireKey(result)}
-                onSelect={onSelect}
+                onShowOnMap={onShowOnMap}
                 selectedRef={selectedResultRef}
               />
             ),
