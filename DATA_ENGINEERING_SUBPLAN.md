@@ -111,9 +111,12 @@ costa e islas y excluir territorios vecinos.
 
 ### FIRMS
 
-Descargar CSV anuales del producto histórico estándar VIIRS S-NPP 375 m para
-2018–2025. Las credenciales se leerán del entorno y nunca aparecerán en TOML,
-argumentos, logs o manifiestos. Cada original se conservará sin modificar con:
+Descargar el producto histórico estándar VIIRS S-NPP 375 m para 2018–2025
+mediante la API de área FIRMS. Como la API admite como máximo cinco días, se
+guardarán cortes deterministas de hasta cinco días y se consolidarán por año
+después de validarlos. Las credenciales se leerán del entorno y nunca aparecerán
+en TOML, argumentos, logs o manifiestos. Cada original se conservará sin
+modificar con:
 
 - producto/colección, año, URL sanitizada y hora UTC de descarga;
 - estado HTTP, tamaño, SHA-256 y validación de esquema;
@@ -275,6 +278,7 @@ Primer corte implementado:
 - [x] Pruebas pequeñas para configuración, confianza, ceros, exclusión y
   detecciones duplicadas.
 - [x] Normalización local y manifiesto reproducible de archivos FIRMS.
+- [x] Cliente FIRMS por cortes de cinco días, caché validada y escritura atómica.
 - [ ] Descarga autenticada y muestra real del archivo FIRMS.
 - [x] Construcción H3 r5, recorte métrico y punto meteorológico terrestre.
 - [x] Descarga y validación del límite oficial NUTS 2024 ES11 de Galicia.

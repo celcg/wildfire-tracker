@@ -14,6 +14,8 @@ test_end = "2025-12-31"
 
 [firms]
 source_product = "VIIRS_SNPP_375M_STANDARD"
+api_source = "VIIRS_SNPP_SP"
+api_max_days = 5
 instrument = "VIIRS"
 platform = "S-NPP"
 satellite_code = "N"

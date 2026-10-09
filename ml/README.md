@@ -20,3 +20,7 @@ The Galicia boundary is the pinned Eurostat/GISCO NUTS 2024 ES11 dataset
 declared in `config/sources.toml`. This portfolio use is non-commercial and
 must retain the attribution: © EuroGeographics for the administrative
 boundaries. Review the source terms before any commercial publication.
+
+FIRMS retrieval uses the standard-processing `VIIRS_SNPP_SP` Area API in
+validated slices of at most five days. Set `FIRMS_MAP_KEY` only in the local
+environment; source metadata uses a redacted `[MAP_KEY]` URL.

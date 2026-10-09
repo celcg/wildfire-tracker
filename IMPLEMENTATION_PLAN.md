@@ -892,3 +892,4 @@ research justifies them.
 | 2026-10-09 | Added local FIRMS S-NPP standard-processing normalization, deterministic deduplication, aggregate quality reporting, and secret-free source manifests. |
 | 2026-10-09 | Added an isolated ML environment and H3 grid construction with exact boundary intersection, metric areas, representative weather points, and coordinate assignment. |
 | 2026-10-09 | Pinned and validated the official Eurostat/GISCO NUTS 2024 ES11 boundary, recorded its non-commercial attribution terms and hash, and added atomic GeoJSON grid export. |
+| 2026-10-09 | Added a resumable FIRMS VIIRS S-NPP standard-processing client using validated five-day slices, atomic local writes, cache validation, and secret-free provenance URLs. |

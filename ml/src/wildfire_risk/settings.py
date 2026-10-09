@@ -55,6 +55,8 @@ class ExperimentSettings:
     h3_resolution: int
     periods: Periods
     firms_source_product: str
+    firms_api_source: str
+    firms_api_max_days: int
     firms_satellite_code: str
     accepted_confidence: frozenset[str]
     weather_model: str
@@ -97,6 +99,12 @@ def load_settings(path: str | Path) -> ExperimentSettings:
     )
     if not accepted or not accepted <= {"nominal", "high"}:
         raise ValueError("Accepted confidence must contain nominal and/or high")
+    api_source = str(values["firms"]["api_source"])
+    if api_source != "VIIRS_SNPP_SP":
+        raise ValueError("FIRMS API source must be VIIRS_SNPP_SP")
+    api_max_days = int(values["firms"]["api_max_days"])
+    if not 1 <= api_max_days <= 5:
+        raise ValueError("FIRMS API slice length must be between 1 and 5 days")
 
     return ExperimentSettings(
         schema_version=int(values["schema_version"]),
@@ -104,6 +112,8 @@ def load_settings(path: str | Path) -> ExperimentSettings:
         h3_resolution=resolution,
         periods=periods,
         firms_source_product=str(values["firms"]["source_product"]),
+        firms_api_source=api_source,
+        firms_api_max_days=api_max_days,
         firms_satellite_code=str(values["firms"]["satellite_code"]),
         accepted_confidence=accepted,
         weather_model=str(values["weather"]["model"]),

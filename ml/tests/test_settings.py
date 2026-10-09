@@ -15,6 +15,8 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.h3_resolution, 5)
         self.assertEqual(settings.timezone, "UTC")
         self.assertEqual(settings.firms_satellite_code, "N")
+        self.assertEqual(settings.firms_api_source, "VIIRS_SNPP_SP")
+        self.assertEqual(settings.firms_api_max_days, 5)
         self.assertEqual(settings.accepted_confidence, {"nominal", "high"})
         self.assertEqual(settings.periods.split_for(date(2023, 12, 31)), "train")
         self.assertEqual(
