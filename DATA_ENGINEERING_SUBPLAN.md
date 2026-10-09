@@ -271,7 +271,8 @@ Primer corte implementado:
 - [x] Panel completo celda/día con ceros explícitos y periodos excluidos nulos.
 - [x] Pruebas pequeñas para configuración, confianza, ceros, exclusión y
   detecciones duplicadas.
-- [ ] Descarga, normalización y manifiesto FIRMS.
+- [x] Normalización local y manifiesto reproducible de archivos FIRMS.
+- [ ] Descarga autenticada y muestra real del archivo FIRMS.
 - [ ] Límite oficial, malla H3 y puntos meteorológicos.
 - [ ] Meteorología, joins, Parquet e informe de calidad.
 

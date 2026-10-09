@@ -889,3 +889,4 @@ research justifies them.
 | 2026-10-09 | Added GALICIA_RISK_PLAN.md, confirmed scope and budget preferences, and moved this feature ahead of Milestone 1.3. Recorded data-quality, temporal-availability, held-out evaluation, API/UI, and staged deployment requirements. No implementation task was marked complete. |
 | 2026-10-09 | Added the detailed Data Engineering subplan and made direct user authorization a required gate before any Galicia experiment deployment or managed-cloud write. |
 | 2026-10-09 | Started the Galicia implementation with validated experiment settings and a deterministic cell/day label panel, including explicit zeros, excluded source periods, and focused tests. |
+| 2026-10-09 | Added local FIRMS S-NPP standard-processing normalization, deterministic deduplication, aggregate quality reporting, and secret-free source manifests. |

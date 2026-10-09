@@ -13,8 +13,10 @@ test_start = "2025-01-01"
 test_end = "2025-12-31"
 
 [firms]
+source_product = "VIIRS_SNPP_375M_STANDARD"
 instrument = "VIIRS"
 platform = "S-NPP"
+satellite_code = "N"
 processing = "standard"
 accepted_confidence = ["nominal", "high"]
 

@@ -54,6 +54,8 @@ class ExperimentSettings:
     timezone: str
     h3_resolution: int
     periods: Periods
+    firms_source_product: str
+    firms_satellite_code: str
     accepted_confidence: frozenset[str]
     weather_model: str
 
@@ -101,6 +103,8 @@ def load_settings(path: str | Path) -> ExperimentSettings:
         timezone=timezone,
         h3_resolution=resolution,
         periods=periods,
+        firms_source_product=str(values["firms"]["source_product"]),
+        firms_satellite_code=str(values["firms"]["satellite_code"]),
         accepted_confidence=accepted,
         weather_model=str(values["weather"]["model"]),
     )
