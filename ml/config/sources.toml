@@ -9,3 +9,12 @@ license_url = "https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units
 copyright_notice = "© EuroGeographics for the administrative boundaries"
 filename = "ES11-region-01m-4326-2024.geojson"
 sha256 = "f73515cb6a1a062cfa306cc8d83dc8938e822de641a235de348b8bf6a7c68d01"
+
+[weather]
+provider = "Open-Meteo Historical Weather API"
+dataset = "ERA5-Seamless"
+url = "https://archive-api.open-meteo.com/v1/archive"
+license = "CC BY 4.0"
+license_url = "https://creativecommons.org/licenses/by/4.0/"
+terms_url = "https://open-meteo.com/en/terms"
+attribution = "Weather data by Open-Meteo; underlying reanalysis by Copernicus/ECMWF"

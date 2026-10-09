@@ -23,7 +23,7 @@ processing = "standard"
 accepted_confidence = ["nominal", "high"]
 
 [weather]
-model = "era5_land"
+model = "era5_seamless"
 timezone = "UTC"
 variables = [
   "temperature_2m_max",

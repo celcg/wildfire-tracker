@@ -24,3 +24,8 @@ boundaries. Review the source terms before any commercial publication.
 FIRMS retrieval uses the standard-processing `VIIRS_SNPP_SP` Area API in
 validated slices of at most five days. Set `FIRMS_MAP_KEY` only in the local
 environment; source metadata uses a redacted `[MAP_KEY]` URL.
+
+Historical weather uses Open-Meteo `era5_seamless` in GMT: ERA5-Land
+temperature and humidity combined with ERA5 forcing for wind and precipitation.
+Weather data is CC BY 4.0 and requires attribution to Open-Meteo and
+Copernicus/ECMWF; the exact source metadata is in `config/sources.toml`.

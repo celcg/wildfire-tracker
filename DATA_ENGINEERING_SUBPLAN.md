@@ -139,12 +139,14 @@ Nubes, horario orbital y sensibilidad del sensor limitan la etiqueta.
 
 ### Meteorología
 
-Usar ERA5-Land explícito mediante Historical Weather de Open-Meteo con
-`timezone=UTC`; no `best_match`. Variables diarias brutas:
+Usar `era5_seamless` explícito mediante Historical Weather de Open-Meteo con
+`timezone=GMT`; no `best_match`. Open-Meteo combina temperatura y humedad
+de ERA5-Land con viento y precipitación derivados del forzamiento ERA5, porque
+ERA5-Land puro no ofrece todas las variables exigidas. Variables diarias brutas:
 
 - temperatura máxima a 2 m (°C);
 - humedad relativa mínima y media a 2 m (%);
-- viento máximo a 10 m (km/h);
+- viento máximo a 10 m (m/s);
 - precipitación acumulada (mm).
 
 Consultar coordenadas y años en lotes dentro de las cuotas vigentes. Cachear
@@ -282,7 +284,9 @@ Primer corte implementado:
 - [ ] Descarga autenticada y muestra real del archivo FIRMS.
 - [x] Construcción H3 r5, recorte métrico y punto meteorológico terrestre.
 - [x] Descarga y validación del límite oficial NUTS 2024 ES11 de Galicia.
-- [ ] Meteorología, joins, Parquet e informe de calidad.
+- [x] Cliente meteorológico con modelo, unidades, fechas y caché validados.
+- [x] Muestra real Open-Meteo de tres días sin huecos para una celda H3.
+- [ ] Descarga meteorológica completa, joins, Parquet e informe de calidad.
 
 ## 10. Puerta de despliegue
 

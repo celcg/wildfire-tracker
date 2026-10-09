@@ -18,6 +18,7 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.firms_api_source, "VIIRS_SNPP_SP")
         self.assertEqual(settings.firms_api_max_days, 5)
         self.assertEqual(settings.accepted_confidence, {"nominal", "high"})
+        self.assertEqual(settings.weather_model, "era5_seamless")
         self.assertEqual(settings.periods.split_for(date(2023, 12, 31)), "train")
         self.assertEqual(
             settings.periods.split_for(date(2024, 1, 1)), "validation"
