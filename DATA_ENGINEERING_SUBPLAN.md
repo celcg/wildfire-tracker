@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-09
 
-Estado: diseño aprobado; implementación pendiente.
+Estado: implementación en curso.
 
 Rama: `feature/galicia-viirs-risk`
 
@@ -263,6 +263,17 @@ El piloto resolverá con evidencia: recurso exacto del límite, valores reales d
 satélite en los CSV, disponibilidad de humedad, tolerancia de intersección,
 interrupciones verificables y coste en tiempo/espacio/llamadas. Se registrará en
 `experiment.toml`, manifiestos y el log de decisiones del plan padre.
+
+Primer corte implementado:
+
+- [x] Configuración TOML con UTC, H3 r5, periodos, confianza y meteorología.
+- [x] Carga validada de configuración y asignación temporal de splits.
+- [x] Panel completo celda/día con ceros explícitos y periodos excluidos nulos.
+- [x] Pruebas pequeñas para configuración, confianza, ceros, exclusión y
+  detecciones duplicadas.
+- [ ] Descarga, normalización y manifiesto FIRMS.
+- [ ] Límite oficial, malla H3 y puntos meteorológicos.
+- [ ] Meteorología, joins, Parquet e informe de calidad.
 
 ## 10. Puerta de despliegue
 

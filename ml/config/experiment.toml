@@ -1,0 +1,30 @@
+schema_version = 1
+timezone = "UTC"
+
+[h3]
+resolution = 5
+
+[periods]
+train_start = "2018-01-01"
+train_end = "2023-12-31"
+validation_start = "2024-01-01"
+validation_end = "2024-12-31"
+test_start = "2025-01-01"
+test_end = "2025-12-31"
+
+[firms]
+instrument = "VIIRS"
+platform = "S-NPP"
+processing = "standard"
+accepted_confidence = ["nominal", "high"]
+
+[weather]
+model = "era5_land"
+timezone = "UTC"
+variables = [
+  "temperature_2m_max",
+  "relative_humidity_2m_min",
+  "relative_humidity_2m_mean",
+  "wind_speed_10m_max",
+  "precipitation_sum",
+]

@@ -29,3 +29,7 @@ Thumbs.db
 .agents/
 AGENTS.md
 skills-lock.json
+
+# Local ML data and generated artifacts
+ml/data/
+ml/artifacts/

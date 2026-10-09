@@ -71,7 +71,8 @@ the final change summary.
 The user has prioritized this separate feature over the remaining main roadmap.
 See [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md) for the experiment contract,
 data pipeline, evaluation, integration, acceptance criteria, and later daily
-operation. Planning is complete; implementation has not started.
+operation. Implementation is in progress: the versioned experiment settings
+and deterministic cell/day label panel are the first completed slice.
 
 Confirmed scope: portfolio with rigorous historical evaluation first, any
 accepted S-NPP detection per Galicia H3 cell/day (including continuing activity),
@@ -887,3 +888,4 @@ research justifies them.
 | 2026-09-23 | Completed and verified Step 1.2 with a responsive semantic explorer, map/list synchronization, keyboard focus recovery, forced-colors support, axe checks, and a browser keyboard smoke test. |
 | 2026-10-09 | Added GALICIA_RISK_PLAN.md, confirmed scope and budget preferences, and moved this feature ahead of Milestone 1.3. Recorded data-quality, temporal-availability, held-out evaluation, API/UI, and staged deployment requirements. No implementation task was marked complete. |
 | 2026-10-09 | Added the detailed Data Engineering subplan and made direct user authorization a required gate before any Galicia experiment deployment or managed-cloud write. |
+| 2026-10-09 | Started the Galicia implementation with validated experiment settings and a deterministic cell/day label panel, including explicit zeros, excluded source periods, and focused tests. |
