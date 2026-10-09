@@ -890,3 +890,4 @@ research justifies them.
 | 2026-10-09 | Added the detailed Data Engineering subplan and made direct user authorization a required gate before any Galicia experiment deployment or managed-cloud write. |
 | 2026-10-09 | Started the Galicia implementation with validated experiment settings and a deterministic cell/day label panel, including explicit zeros, excluded source periods, and focused tests. |
 | 2026-10-09 | Added local FIRMS S-NPP standard-processing normalization, deterministic deduplication, aggregate quality reporting, and secret-free source manifests. |
+| 2026-10-09 | Added an isolated ML environment and H3 grid construction with exact boundary intersection, metric areas, representative weather points, and coordinate assignment. |

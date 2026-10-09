@@ -273,7 +273,8 @@ Primer corte implementado:
   detecciones duplicadas.
 - [x] Normalización local y manifiesto reproducible de archivos FIRMS.
 - [ ] Descarga autenticada y muestra real del archivo FIRMS.
-- [ ] Límite oficial, malla H3 y puntos meteorológicos.
+- [x] Construcción H3 r5, recorte métrico y punto meteorológico terrestre.
+- [ ] Descarga y validación del límite oficial de Galicia.
 - [ ] Meteorología, joins, Parquet e informe de calidad.
 
 ## 10. Puerta de despliegue

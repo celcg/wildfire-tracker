@@ -1,0 +1,10 @@
+# Resolved from requirements.in with Python 3.13.11.
+certifi==2026.7.22
+h3==4.5.0
+numpy==2.5.3
+pandas==3.0.5
+pyproj==3.8.0
+python-dateutil==2.9.0.post0
+shapely==2.2.0
+six==1.17.0
+tzdata==2026.5

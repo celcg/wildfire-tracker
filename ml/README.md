@@ -3,13 +3,15 @@
 This package builds the local, reproducible dataset described in
 [`DATA_ENGINEERING_SUBPLAN.md`](../DATA_ENGINEERING_SUBPLAN.md).
 
-The first implemented slice validates the experiment configuration and creates
-the complete cell/day label panel from normalized detections. It performs no
-network or cloud operation.
+Implemented local stages validate the experiment configuration, normalize FIRMS
+archive rows, build the H3 grid from a supplied Galicia boundary, and create the
+complete cell/day label panel. They perform no cloud operation.
 
-Run its tests from the repository root with the existing backend environment:
+Create the isolated environment and run tests from the repository root:
 
 ```powershell
+python -m venv ml/.venv
+ml/.venv/Scripts/python.exe -m pip install -r ml/requirements.txt
 $env:PYTHONPATH = "ml/src"
-backend/.venv/Scripts/python.exe -m unittest discover -s ml/tests -v
+ml/.venv/Scripts/python.exe -m unittest discover -s ml/tests -v
 ```
