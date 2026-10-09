@@ -1,6 +1,6 @@
 # Wildfire Tracker Implementation Plan
 
-Last updated: 2026-09-23
+Last updated: 2026-10-09
 
 ## Purpose
 
@@ -9,7 +9,8 @@ Tracker. It translates the current project assessment into small, verifiable
 tasks while preserving the system's security, availability, privacy, and data
 interpretation contracts.
 
-The plan is ordered deliberately. Stabilize the current baseline before adding
+The main roadmap is ordered deliberately, with the priority Galicia experiment
+taking precedence as recorded below. Stabilize the current baseline before adding
 features, improve the core live-data experience before exposing historical
 analytics, and measure performance before changing the clustering architecture.
 
@@ -65,7 +66,19 @@ the final change summary.
 
 ## Current Focus
 
-**Next: Milestone 1.3, add filtering and sorting.**
+**Priority: Galicia VIIRS risk experiment, historical demo first.**
+
+The user has prioritized this separate feature over the remaining main roadmap.
+See [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md) for the experiment contract,
+data pipeline, evaluation, integration, acceptance criteria, and later daily
+operation. Planning is complete; implementation has not started.
+
+Confirmed scope: portfolio with rigorous historical evaluation first, any
+accepted S-NPP detection per Galicia H3 cell/day (including continuing activity),
+flexible timeline, and free services preferred. The initial retrospective
+demo must not be presented as a forecast issued before the target day.
+
+**Resume after the priority feature: Milestone 1.3, add filtering and sorting.**
 
 Milestone 0 and Steps 1.1–1.2 are implemented and verified locally. The live map
 has explicit request states, independent parallel refresh, and an accessible
@@ -99,6 +112,9 @@ decision updates both the implementation and this plan.
 - Raw installation IDs, IP addresses, coordinates, payloads, secrets, and
   upstream exception messages or URLs must not enter logs.
 - Tests must not consume NASA quota or write to Firestore or BigQuery.
+- No work on the Galicia VIIRS experiment may deploy, activate schedulers,
+  change cloud configuration, or write to managed cloud storage without direct,
+  action-specific user authorization after the result is prepared for review.
 - Historical ingestion continues to require fresh one-day data, authenticated
   Scheduler OIDC, idempotent hourly snapshots, relationship validation, bounded
   queries and payloads, and atomic writes.
@@ -110,6 +126,7 @@ decision updates both the implementation and this plan.
 
 | Milestone | Outcome | Status |
 | --- | --- | --- |
+| P. Galicia VIIRS experiment | Reproducible historical risk demo; daily forecasts later | Prioritized; implementation not started |
 | 0. Stable baseline | Green, reproducible, automated validation | Completed locally |
 | 1. Core map experience | Accessible, filterable, resilient live-data UI | Not started |
 | 2. Historical intelligence | Useful trends without coupling the live map to BigQuery | Not started |
@@ -853,6 +870,7 @@ research justifies them.
 | 2026-09-23 | Manual refresh updates detections and clusters in parallel. | Users expect both layers to be current after one explicit refresh; independent settled results prevent either endpoint from blocking the other's update. |
 | 2026-09-23 | The accessible explorer is a semantic observation log below the map, with shared selection and explicit focus return. | It exposes popup-equivalent information without requiring map use while retaining the map as spatial context instead of duplicating it in generic cards. |
 | 2026-09-23 | Component accessibility uses Vitest, Testing Library, jsdom, and axe-core; critical keyboard flow uses Playwright Chromium. | Node's unit runner cannot execute JSX interactions or validate real browser focus and fragment navigation. |
+| 2026-10-09 | Prioritize the separate Galicia VIIRS experiment before the remaining main roadmap. | The user requested a rigorous portfolio demo first, later daily forecasts, flexible timing and free services preferred. Labels cover any accepted S-NPP detection, including ongoing activity; retrospective weather-based estimates do not establish operational forecast skill. Details and acceptance gates are in GALICIA_RISK_PLAN.md. |
 
 ## Plan Change Log
 
@@ -867,3 +885,5 @@ research justifies them.
 | 2026-09-23 | Completed and verified Step 1.1 with independent layer refresh, retained-data loading, explicit request states, retry countdowns, and sanitized support IDs. |
 | 2026-09-23 | Changed manual refresh to update both map layers in parallel while preserving independent success and failure behavior. |
 | 2026-09-23 | Completed and verified Step 1.2 with a responsive semantic explorer, map/list synchronization, keyboard focus recovery, forced-colors support, axe checks, and a browser keyboard smoke test. |
+| 2026-10-09 | Added GALICIA_RISK_PLAN.md, confirmed scope and budget preferences, and moved this feature ahead of Milestone 1.3. Recorded data-quality, temporal-availability, held-out evaluation, API/UI, and staged deployment requirements. No implementation task was marked complete. |
+| 2026-10-09 | Added the detailed Data Engineering subplan and made direct user authorization a required gate before any Galicia experiment deployment or managed-cloud write. |
