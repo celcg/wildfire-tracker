@@ -29,3 +29,7 @@ Historical weather uses Open-Meteo `era5_seamless` in GMT: ERA5-Land
 temperature and humidity combined with ERA5 forcing for wind and precipitation.
 Weather data is CC BY 4.0 and requires attribution to Open-Meteo and
 Copernicus/ECMWF; the exact source metadata is in `config/sources.toml`.
+
+The dataset builder preserves the full cell/day panel, marks missing weather,
+adds D-1 and D-7…D-1 features, assigns temporal splits, and writes validated
+Zstandard Parquet files atomically.

@@ -895,3 +895,4 @@ research justifies them.
 | 2026-10-09 | Added a resumable FIRMS VIIRS S-NPP standard-processing client using validated five-day slices, atomic local writes, cache validation, and secret-free provenance URLs. |
 | 2026-10-09 | Replaced the incomplete pure ERA5-Land weather assumption with explicit ERA5-Seamless provenance and added validated, cacheable Open-Meteo daily retrieval. |
 | 2026-10-09 | Validated a live three-day Open-Meteo sample for a Galicia H3 weather point: complete dates, expected units and variables, and no missing values. |
+| 2026-10-09 | Added deterministic cell/day assembly, missing-weather status, leakage-safe D-1 and D-7…D-1 features, temporal splits, and validated atomic Zstandard Parquet output. |

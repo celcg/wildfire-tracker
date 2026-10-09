@@ -286,7 +286,8 @@ Primer corte implementado:
 - [x] Descarga y validación del límite oficial NUTS 2024 ES11 de Galicia.
 - [x] Cliente meteorológico con modelo, unidades, fechas y caché validados.
 - [x] Muestra real Open-Meteo de tres días sin huecos para una celda H3.
-- [ ] Descarga meteorológica completa, joins, Parquet e informe de calidad.
+- [x] Joins, lags D-1, lluvia D-7…D-1 y Parquet Zstandard atómico.
+- [ ] Descargas completas, `dataset.parquet` final e informe de calidad.
 
 ## 10. Puerta de despliegue
 
