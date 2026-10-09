@@ -1,0 +1,11 @@
+[galicia_boundary]
+provider = "European Commission - Eurostat/GISCO"
+dataset = "NUTS 2024, ES11 Galicia, region 1:1M"
+version = "2024"
+nuts_id = "ES11"
+level = 2
+url = "https://gisco-services.ec.europa.eu/distribution/v2/nuts/distribution/ES11-region-01m-4326-2024.geojson"
+license_url = "https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units"
+copyright_notice = "© EuroGeographics for the administrative boundaries"
+filename = "ES11-region-01m-4326-2024.geojson"
+sha256 = "f73515cb6a1a062cfa306cc8d83dc8938e822de641a235de348b8bf6a7c68d01"

@@ -125,6 +125,43 @@ def build_h3_grid(
     return sorted(cells, key=lambda cell: cell.h3_cell)
 
 
+def grid_feature_collection(cells: list[GridCell]) -> dict[str, object]:
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "h3_cell": cell.h3_cell,
+                    "h3_resolution": cell.h3_resolution,
+                    "cell_area_km2": cell.cell_area_km2,
+                    "galicia_area_km2": cell.galicia_area_km2,
+                    "galicia_fraction": cell.galicia_fraction,
+                    "weather_latitude": cell.weather_latitude,
+                    "weather_longitude": cell.weather_longitude,
+                },
+                "geometry": mapping(cell.geometry),
+            }
+            for cell in cells
+        ],
+    }
+
+
+def write_grid_geojson(cells: list[GridCell], path: str | Path) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = output_path.with_suffix(f"{output_path.suffix}.tmp")
+    temporary_path.write_text(
+        json.dumps(
+            grid_feature_collection(cells),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        encoding="utf-8",
+    )
+    temporary_path.replace(output_path)
+
+
 def assign_h3_cells(
     detections: pd.DataFrame,
     *,

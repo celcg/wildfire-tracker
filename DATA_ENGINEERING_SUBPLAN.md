@@ -101,11 +101,13 @@ Decisiones:
 
 ### Límite de Galicia
 
-Usar un límite administrativo oficial con licencia, versión, URL y SHA-256
-registrados. Se preferirá CNIG/IGN o Xunta; si entrega provincias, se unirán A
-Coruña, Lugo, Ourense y Pontevedra. Almacenamiento EPSG:4326 y cálculos métricos
-EPSG:25829. La geometría resultante debe ser válida, no vacía, cubrir costa e
-islas y excluir territorios vecinos. No se fijará una URL efímera en el código.
+Se fija el límite oficial NUTS 2024 ES11 de Eurostat/GISCO, región a escala
+1:1M. La versión, URL, licencia, atribución y SHA-256 viven en
+`ml/config/sources.toml`. Su uso es no comercial y requiere la atribución
+`© EuroGeographics for the administrative boundaries`; un uso comercial
+obligaría a revisar la licencia antes de publicar. Almacenamiento EPSG:4326 y
+cálculos métricos EPSG:25829. La geometría debe ser válida, no vacía, cubrir
+costa e islas y excluir territorios vecinos.
 
 ### FIRMS
 
@@ -259,10 +261,11 @@ Cerradas:
 - ERA5-Land para la demo y punto terrestre representativo por celda;
 - almacenamiento local con manifiestos; 2025 reservado para test.
 
-El piloto resolverá con evidencia: recurso exacto del límite, valores reales de
-satélite en los CSV, disponibilidad de humedad, tolerancia de intersección,
-interrupciones verificables y coste en tiempo/espacio/llamadas. Se registrará en
-`experiment.toml`, manifiestos y el log de decisiones del plan padre.
+El piloto resolverá con evidencia: valores reales de satélite en los CSV,
+disponibilidad de humedad, tolerancia de intersección, interrupciones
+verificables y coste en tiempo/espacio/llamadas. Se registrará en
+`experiment.toml`, `sources.toml`, manifiestos y el log de decisiones del
+plan padre.
 
 Primer corte implementado:
 
@@ -274,7 +277,7 @@ Primer corte implementado:
 - [x] Normalización local y manifiesto reproducible de archivos FIRMS.
 - [ ] Descarga autenticada y muestra real del archivo FIRMS.
 - [x] Construcción H3 r5, recorte métrico y punto meteorológico terrestre.
-- [ ] Descarga y validación del límite oficial de Galicia.
+- [x] Descarga y validación del límite oficial NUTS 2024 ES11 de Galicia.
 - [ ] Meteorología, joins, Parquet e informe de calidad.
 
 ## 10. Puerta de despliegue

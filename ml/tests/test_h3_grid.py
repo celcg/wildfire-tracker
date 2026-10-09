@@ -10,7 +10,9 @@ from shapely.geometry import Point, Polygon, mapping
 from wildfire_risk.h3_grid import (
     assign_h3_cells,
     build_h3_grid,
+    grid_feature_collection,
     load_geojson_boundary,
+    write_grid_geojson,
 )
 
 
@@ -88,6 +90,28 @@ class H3GridTest(unittest.TestCase):
         self.assertEqual(
             assigned.iloc[0]["h3_cell"],
             h3.latlng_to_cell(42.1, -8.6, 5),
+        )
+
+    def test_exports_complete_grid_geojson_atomically(self):
+        boundary = Polygon(
+            [(-8.8, 42.0), (-8.4, 42.0), (-8.4, 42.4), (-8.8, 42.4)]
+        )
+        cells = build_h3_grid(boundary, resolution=5)
+        collection = grid_feature_collection(cells)
+
+        with TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "nested" / "grid.geojson"
+            write_grid_geojson(cells, path)
+            written = json.loads(path.read_text(encoding="utf-8"))
+
+            self.assertEqual(written, json.loads(json.dumps(collection)))
+            self.assertFalse(path.with_suffix(".geojson.tmp").exists())
+
+        self.assertEqual(collection["type"], "FeatureCollection")
+        self.assertEqual(len(collection["features"]), len(cells))
+        self.assertEqual(
+            collection["features"][0]["properties"]["h3_cell"],
+            cells[0].h3_cell,
         )
 
 
