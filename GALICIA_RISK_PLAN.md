@@ -30,8 +30,10 @@ Decisiones confirmadas por el usuario:
   de decidir la exclusión definitiva.
 - Estudiar 15 días con detección en una ventana móvil de 30 días y actividad esporádica
   presente durante cuatro meses consecutivos como hipótesis separadas.
-- Comparar radios de 500 y 1.000 m y elegir uno; comparar toda Galicia con
-  variables forestales frente a superficie forestal/matorral y elegir un ámbito.
+- Comparar radios de 500 y 1.000 m desde un centro fijo por foco y elegir uno;
+  comparar toda Galicia con variables forestales frente a celdas con suficiente
+  bosque/matorral y elegir un ámbito. En ambos, cualquier detección de la celda
+  sigue siendo positiva; el umbral forestal se acordará tras estudiar cobertura.
   Las elecciones se harán con validación, sin utilizar el test reservado.
 - Plazo flexible. Priorizar servicios gratuitos; estudiar alternativas antes
   de asumir un coste inevitable.
@@ -122,6 +124,10 @@ La revisión del 2026-10-10 y sus dependencias están en
 [FORECAST_VALIDATION_SUBPLAN.md](FORECAST_VALIDATION_SUBPLAN.md): F0 contrato,
 F1 fuentes, F2 contraste oficial, F3 focos persistentes, F4 bosque/meteorología,
 F5 dataset, F6 evaluación, F7 demo y F8 operación autorizada.
+Sus secciones 7 y 8 concretan módulos existentes/nuevos, contratos, almacenamiento
+y siete fases de ejecución A–G con pasos verificables. Son el orden de trabajo
+vigente: viabilidad → muestra reproducible → auditoría/territorio → dataset
+→ selección/evaluación → demo local → operación tras autorización.
 Los bloques siguientes conservan requisitos útiles del plan original;
 las ampliaciones F0–F8 prevalecen ante discrepancias.
 

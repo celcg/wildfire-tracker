@@ -13,6 +13,9 @@ El usuario ha priorizado pronósticos, contraste oficial, focos recurrentes y
 contexto forestal. Este documento conserva la base implementada en UTC;
 sus años y etiquetas no son el contrato final del nuevo experimento.
 Los nuevos módulos, hitos y decisiones pendientes se definen en F0–F8.
+La arquitectura ejecutable, contratos entre etapas y fases A–G se detallan en
+las secciones 7–8 del mismo subplan. Priorizar una muestra completa con fechas
+locales y pronóstico disponible al emitir antes de ampliar el archivo histórico.
 
 ## 1. Resultado y límites
 
@@ -307,10 +310,12 @@ Primer corte implementado:
 - [ ] Observaciones de ayer y pronóstico válido a las 00:00 Europe/Madrid.
 - [ ] EGIF/EFFIS: cobertura, geometrías, fechas y contraste por evento.
 - [ ] Estudio de 15 días distintos en una ventana móvil de 30 días y actividad esporádica
-  en cuatro meses consecutivos; comparar radios de 500 y 1.000 m y elegir uno.
+  en cuatro meses consecutivos; comparar radios de 500 y 1.000 m desde un
+  centro fijo por foco y elegir uno.
 - [ ] Corroboración industrial con PRTR y usos del suelo antes de excluir.
 - [ ] Variables MFE25; comparar toda Galicia con variables forestales frente
-  a superficie forestal/matorral y elegir un ámbito mediante validación.
+  a celdas con suficiente bosque/matorral, manteniendo cualquier detección
+  como positivo; acordar umbral y elegir un ámbito mediante validación.
 - [ ] Calendario local, esquema por emisión y partición temporal nueva.
 - [ ] Reproducción histórica sin datos publicados después del corte.
 

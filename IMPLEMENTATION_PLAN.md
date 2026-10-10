@@ -74,6 +74,10 @@ data pipeline, evaluation, integration, acceptance criteria, and later daily
 operation. Data foundations are implemented; the new forecast contract,
 official-event audit, recurring thermal sources, and forest context remain open
 in [FORECAST_VALIDATION_SUBPLAN.md](FORECAST_VALIDATION_SUBPLAN.md), milestones F0–F8.
+Sections 7–8 now define executable architecture and phases A–G: source
+feasibility, reproducible sample, audit/territory, dataset, evaluation, local
+demo and authorized operation. Next deliverable: source availability audit and
+candidate temporal split; no new implementation milestone is marked complete.
 
 Confirmed scope: portfolio with rigorous historical evaluation first, any
 accepted S-NPP detection per Galicia H3 cell/day (including continuing activity),
@@ -84,8 +88,10 @@ must be reconsidered after source verification. Evaluate EGIF, EFFIS, PRTR,
 MFE25, MeteoGalicia and Open-Meteo before fixing providers. The user confirmed
 15 distinct detection days within a rolling 30-day window and sporadic activity
 in four consecutive months as separate audit hypotheses. Compare 500/1,000 m
-site radii and select one; compare all Galicia with forest features against a
-forest/shrubland-restricted scope and select one using validation, not test.
+site radii measured from fixed centers and select one; compare all Galicia with
+forest features against cells with sufficient forest/shrubland coverage and
+select one using validation, not test. Both scopes predict any accepted detection
+within the cell; the forest coverage threshold remains to be agreed after audit.
 Clarify remaining grouping details before implementation; repeated
 detections alone do not establish an industrial classification.
 
@@ -914,3 +920,4 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-10 | Added FORECAST_VALIDATION_SUBPLAN.md with F0–F8 milestones, source candidates and architecture for official validation, persistent/recurrent thermal sites, forest context and midnight forecasts. Updated parent and data plans; recorded confirmed timing and pending user decisions. |
 | 2026-10-10 | Recorded user decisions: 15 detection days accumulated in a month, sporadic activity across four consecutive months, comparison of 500/1,000 m radii with one selected, and comparison of all-Galicia versus forest/shrubland scope with one selected. Updated F0/F3/F4/F6 without marking implementation complete. |
 | 2026-10-10 | Confirmed a rolling 30-day window for the 15 distinct detection days criterion; closed the calendar-month versus rolling-window question in D1. Monthly recurrence remains a separate four-consecutive-month criterion. |
+| 2026-10-10 | Refined the forecast plan with seven execution phases A–G, repository integration points, artifact contracts, proposed API/catalog behavior, comparison protocol and acceptance checks. Recorded fixed-center radii and forest-cell selection with unchanged detection target; thresholds and center initialization remain explicit decisions. No deployment or implementation completion claimed. |
