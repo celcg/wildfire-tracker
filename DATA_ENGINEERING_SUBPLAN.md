@@ -1,12 +1,18 @@
 # Subplan 1: Data Engineering para Galicia VIIRS
 
-Fecha: 2026-10-09
+Fecha: 2026-10-10
 
 Estado: implementación en curso.
 
 Rama: `feature/galicia-viirs-risk`
 
 Plan padre: [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md)
+
+Revisión vigente: [FORECAST_VALIDATION_SUBPLAN.md](FORECAST_VALIDATION_SUBPLAN.md).
+El usuario ha priorizado pronósticos, contraste oficial, focos recurrentes y
+contexto forestal. Este documento conserva la base implementada en UTC;
+sus años y etiquetas no son el contrato final del nuevo experimento.
+Los nuevos módulos, hitos y decisiones pendientes se definen en F0–F8.
 
 ## 1. Resultado y límites
 
@@ -15,6 +21,9 @@ resolución 5 que interseque Galicia y día UTC. `label_detection` será 1 si el
 archivo estándar de VIIRS S-NPP contiene al menos una detección aceptada en esa
 celda y fecha, y 0 si no la contiene. Incluye actividad que continúa de días
 anteriores; no representa inicio, superficie quemada ni confirmación de incendio.
+Migración pendiente: fecha objetivo local Europe/Madrid, emisión a las 00:00
+para ese mismo día, observaciones de ayer y pronóstico disponible al corte.
+La política industrial/forestal y los nuevos años requieren decisión del usuario.
 
 Entregables: `dataset.parquet`, `grid.geojson`, originales e intermedios
 trazables, `data_manifest.json` y `data_quality.json`. Esta tarea no entrena
@@ -42,7 +51,7 @@ flowchart LR
     N --> L[Etiqueta celda/día]
     G --> L
     G --> P[Puntos meteorológicos]
-    W[ERA5-Land diario] --> M[Meteorología normalizada]
+    W[ERA5-Seamless diagnóstico] --> M[Meteorología normalizada]
     P --> W
     L --> J[Calendario completo + join]
     M --> J
@@ -152,8 +161,9 @@ ERA5-Land puro no ofrece todas las variables exigidas. Variables diarias brutas:
 Consultar coordenadas y años en lotes dentro de las cuotas vigentes. Cachear
 cada respuesta por hash de petición y guardar modelo, unidades, coordenadas
 solicitadas y devueltas. Es reanálisis para evaluación retrospectiva; no prueba
-disponibilidad previa al día objetivo. La fase diaria deberá usar ejecuciones de
-pronóstico con publicación comprobada.
+disponibilidad previa al día objetivo. Ahora el experimento principal exige
+ejecuciones de pronóstico con publicación comprobada y observaciones anteriores;
+el cliente existente no satisface por sí solo ese requisito. Ver F1/F4.
 
 ## 5. Construcción espacial
 
@@ -205,7 +215,10 @@ presencia en el archivo, con la limitación satelital ya descrita.
 - seno/coseno estacional estable en años bisiestos.
 
 `split` será `train` para 2018–2023, `validation` para 2024 y `test` para 2025.
-Las columnas del propio día solo podrán alimentar la variante retrospectiva.
+Estos cortes son del dataset inicial y quedan pendientes de sustitución tras F1.
+Las columnas observadas del propio día no alimentarán el nuevo predictor.
+Su esquema añadirá emisión, zona, versión de etiqueta, pronósticos, vegetación
+y referencias de auditoría según el nuevo subplan.
 
 Metadatos: versiones de esquema/dataset, H3, periodo, hashes de configuración,
 malla, FIRMS y meteorología, y versiones de Python/librerías. El timestamp de
@@ -258,12 +271,12 @@ solo no basta.
 
 ## 9. Decisiones
 
-Cerradas:
+Base implementada (decisiones iniciales; revisar para el nuevo experimento):
 
 - rama `feature/galicia-viirs-risk` y pipeline independiente en `ml/`;
 - S-NPP estándar, 2018–2025, H3 r5, UTC;
 - etiqueta nominal/alta, incluida persistencia;
-- ERA5-Land para la demo y punto terrestre representativo por celda;
+- ERA5-Seamless diagnóstico y punto terrestre representativo por celda;
 - almacenamiento local con manifiestos; 2025 reservado para test.
 
 El piloto resolverá con evidencia: valores reales de satélite en los CSV,
@@ -289,7 +302,20 @@ Primer corte implementado:
 - [x] Joins, lags D-1, lluvia D-7…D-1 y Parquet Zstandard atómico.
 - [ ] Descargas completas, `dataset.parquet` final e informe de calidad.
 
-## 10. Puerta de despliegue
+## 10. Ampliación pendiente: F0–F8
+
+- [ ] Observaciones de ayer y pronóstico válido a las 00:00 Europe/Madrid.
+- [ ] EGIF/EFFIS: cobertura, geometrías, fechas y contraste por evento.
+- [ ] Estudio >15 días y mensual: definir umbrales y escala con el usuario.
+- [ ] Corroboración industrial con PRTR y usos del suelo antes de excluir.
+- [ ] Variables MFE25 y política de bosque/matorral por decidir.
+- [ ] Calendario local, esquema por emisión y partición temporal nueva.
+- [ ] Reproducción histórica sin datos publicados después del corte.
+
+Estos hitos no están cubiertos por las pruebas existentes del pipeline.
+No marcar el dataset final como terminado por haber implementado Parquet.
+
+## 11. Puerta de despliegue
 
 Este subplan solo autoriza trabajo local. No autoriza desplegar Cloud Run o
 Firebase; crear/activar Jobs o Scheduler; crear buckets o subir a Cloud Storage;

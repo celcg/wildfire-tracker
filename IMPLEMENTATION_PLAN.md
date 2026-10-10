@@ -1,6 +1,6 @@
 # Wildfire Tracker Implementation Plan
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 ## Purpose
 
@@ -66,18 +66,24 @@ the final change summary.
 
 ## Current Focus
 
-**Priority: Galicia VIIRS risk experiment, historical demo first.**
+**Priority: Galicia forecast experiment, local historical backtest before deployment.**
 
 The user has prioritized this separate feature over the remaining main roadmap.
 See [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md) for the experiment contract,
 data pipeline, evaluation, integration, acceptance criteria, and later daily
-operation. Implementation is in progress: the versioned experiment settings
-and deterministic cell/day label panel are the first completed slice.
+operation. Data foundations are implemented; the new forecast contract,
+official-event audit, recurring thermal sources, and forest context remain open
+in [FORECAST_VALIDATION_SUBPLAN.md](FORECAST_VALIDATION_SUBPLAN.md), milestones F0–F8.
 
 Confirmed scope: portfolio with rigorous historical evaluation first, any
 accepted S-NPP detection per Galicia H3 cell/day (including continuing activity),
-flexible timeline, and free services preferred. The initial retrospective
-demo must not be presented as a forecast issued before the target day.
+flexible timeline, and free services preferred. On 2026-10-10 the user prioritized
+forecasts even with fewer years: emit at 00:00 Europe/Madrid for the day starting,
+using yesterday's observations and that day's forecast. Existing 2018–2025 splits
+must be reconsidered after source verification. Evaluate EGIF, EFFIS, PRTR,
+MFE25, MeteoGalicia and Open-Meteo before fixing providers. Ask the user about
+persistence, recurrence, site radius, forest scope and exclusion policy;
+do not silently convert a repeated detection into an industrial classification.
 
 **Resume after the priority feature: Milestone 1.3, add filtering and sorting.**
 
@@ -872,6 +878,7 @@ research justifies them.
 | 2026-09-23 | The accessible explorer is a semantic observation log below the map, with shared selection and explicit focus return. | It exposes popup-equivalent information without requiring map use while retaining the map as spatial context instead of duplicating it in generic cards. |
 | 2026-09-23 | Component accessibility uses Vitest, Testing Library, jsdom, and axe-core; critical keyboard flow uses Playwright Chromium. | Node's unit runner cannot execute JSX interactions or validate real browser focus and fragment navigation. |
 | 2026-10-09 | Prioritize the separate Galicia VIIRS experiment before the remaining main roadmap. | The user requested a rigorous portfolio demo first, later daily forecasts, flexible timing and free services preferred. Labels cover any accepted S-NPP detection, including ongoing activity; retrospective weather-based estimates do not establish operational forecast skill. Details and acceptance gates are in GALICIA_RISK_PLAN.md. |
+| 2026-10-10 | Prioritize forecasts available at 00:00 Europe/Madrid for the day starting, with previous-day observations; allow partial observations only with validated quality handling. | User confirmed timing and fewer years if necessary; add official-event audit, forest context and comparison with/without corroborated industrial sites. Provider choices and unresolved thresholds need user decisions after pilot evidence. |
 
 ## Plan Change Log
 
@@ -896,3 +903,4 @@ research justifies them.
 | 2026-10-09 | Replaced the incomplete pure ERA5-Land weather assumption with explicit ERA5-Seamless provenance and added validated, cacheable Open-Meteo daily retrieval. |
 | 2026-10-09 | Validated a live three-day Open-Meteo sample for a Galicia H3 weather point: complete dates, expected units and variables, and no missing values. |
 | 2026-10-09 | Added deterministic cell/day assembly, missing-weather status, leakage-safe D-1 and D-7…D-1 features, temporal splits, and validated atomic Zstandard Parquet output. |
+| 2026-10-10 | Added FORECAST_VALIDATION_SUBPLAN.md with F0–F8 milestones, source candidates and architecture for official validation, persistent/recurrent thermal sites, forest context and midnight forecasts. Updated parent and data plans; recorded confirmed timing and pending user decisions. |
