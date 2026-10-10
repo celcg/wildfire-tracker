@@ -82,11 +82,11 @@ forecasts even with fewer years: emit at 00:00 Europe/Madrid for the day startin
 using yesterday's observations and that day's forecast. Existing 2018–2025 splits
 must be reconsidered after source verification. Evaluate EGIF, EFFIS, PRTR,
 MFE25, MeteoGalicia and Open-Meteo before fixing providers. The user confirmed
-15 distinct detection days accumulated within a month and sporadic activity
+15 distinct detection days within a rolling 30-day window and sporadic activity
 in four consecutive months as separate audit hypotheses. Compare 500/1,000 m
 site radii and select one; compare all Galicia with forest features against a
 forest/shrubland-restricted scope and select one using validation, not test.
-Clarify remaining window/grouping details before implementation; repeated
+Clarify remaining grouping details before implementation; repeated
 detections alone do not establish an industrial classification.
 
 **Resume after the priority feature: Milestone 1.3, add filtering and sorting.**
@@ -913,3 +913,4 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-09 | Added deterministic cell/day assembly, missing-weather status, leakage-safe D-1 and D-7…D-1 features, temporal splits, and validated atomic Zstandard Parquet output. |
 | 2026-10-10 | Added FORECAST_VALIDATION_SUBPLAN.md with F0–F8 milestones, source candidates and architecture for official validation, persistent/recurrent thermal sites, forest context and midnight forecasts. Updated parent and data plans; recorded confirmed timing and pending user decisions. |
 | 2026-10-10 | Recorded user decisions: 15 detection days accumulated in a month, sporadic activity across four consecutive months, comparison of 500/1,000 m radii with one selected, and comparison of all-Galicia versus forest/shrubland scope with one selected. Updated F0/F3/F4/F6 without marking implementation complete. |
+| 2026-10-10 | Confirmed a rolling 30-day window for the 15 distinct detection days criterion; closed the calendar-month versus rolling-window question in D1. Monthly recurrence remains a separate four-consecutive-month criterion. |

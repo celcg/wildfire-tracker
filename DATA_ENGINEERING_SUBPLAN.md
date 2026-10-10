@@ -306,7 +306,7 @@ Primer corte implementado:
 
 - [ ] Observaciones de ayer y pronóstico válido a las 00:00 Europe/Madrid.
 - [ ] EGIF/EFFIS: cobertura, geometrías, fechas y contraste por evento.
-- [ ] Estudio de 15 días distintos acumulados en un mes y actividad esporádica
+- [ ] Estudio de 15 días distintos en una ventana móvil de 30 días y actividad esporádica
   en cuatro meses consecutivos; comparar radios de 500 y 1.000 m y elegir uno.
 - [ ] Corroboración industrial con PRTR y usos del suelo antes de excluir.
 - [ ] Variables MFE25; comparar toda Galicia con variables forestales frente

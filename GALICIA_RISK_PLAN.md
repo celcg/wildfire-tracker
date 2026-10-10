@@ -28,7 +28,7 @@ Decisiones confirmadas por el usuario:
   se valida; cobertura mínima por decidir tras el piloto.
 - Auditar y comparar resultados con/sin focos industriales corroborados antes
   de decidir la exclusión definitiva.
-- Estudiar 15 días con detección acumulados en un mes y actividad esporádica
+- Estudiar 15 días con detección en una ventana móvil de 30 días y actividad esporádica
   presente durante cuatro meses consecutivos como hipótesis separadas.
 - Comparar radios de 500 y 1.000 m y elegir uno; comparar toda Galicia con
   variables forestales frente a superficie forestal/matorral y elegir un ámbito.

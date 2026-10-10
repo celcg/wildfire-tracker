@@ -27,7 +27,7 @@ Confirmado por el usuario el 2026-10-10:
   que cualquier cantidad de datos permite emitir.
 - Auditar focos industriales y comparar con/sin focos corroborados antes de
   decidir exclusiones definitivas.
-- Persistencia: 15 días distintos con detección acumulados en un mes, sin
+- Persistencia: 15 días distintos con detección en una ventana móvil de 30 días, sin
   exigir continuidad. Esta precisión sustituye la formulación anterior >15 días.
 - Recurrencia: actividad esporádica en cada uno de cuatro meses consecutivos;
   registrar presencia mensual sin exigir actividad diaria.
@@ -42,7 +42,7 @@ silenciosos. D1–D4 ya tienen una dirección confirmada por el usuario:
 
 | ID | Decisión | Pregunta o alternativas |
 | --- | --- | --- |
-| D1 | Persistencia | Confirmado: 15 días distintos acumulados en un mes. Concretar mes natural o ventana móvil antes de implementar. |
+| D1 | Persistencia | Confirmado: 15 días distintos con detección en una ventana móvil de 30 días. Contar fechas locales únicas; varias detecciones en un día cuentan como un solo día. |
 | D2 | Recurrencia | Confirmado: actividad esporádica durante cuatro meses seguidos, con presencia en cada mes. No se ha fijado un máximo de frecuencia para «esporádica». |
 | D3 | Misma zona | Comparación aprobada: radios de 500 y 1.000 m; seleccionar solo uno con resultados de entrenamiento/validación. Método de agrupación y centro por acordar antes de implementarlo. |
 | D4 | Papel de vegetación | Comparación aprobada: toda Galicia con variables forestales frente a superficie forestal/matorral; elegir una opción. Definir clases y tratamiento de celdas mixtas antes de implementar. |
@@ -227,7 +227,7 @@ no se presenta como validación completamente independiente de FIRMS.
   No unir toda una celda por compartir ID.
 - [ ] Medir días únicos, duración entre extremos, racha consecutiva,
   meses con detección, huecos y dispersión espacial; no confundir métricas.
-- [ ] Evaluar por separado 15 días distintos acumulados en un mes y actividad
+- [ ] Evaluar por separado 15 días distintos en una ventana móvil de 30 días y actividad
   esporádica presente en cuatro meses consecutivos, según D1/D2; deduplicar
   detecciones del mismo día. Distribución día/noche y FRP sirven de auditoría.
 - [ ] Contrastar candidatos con PRTR, uso del suelo y eventos EGIF/EFFIS;
