@@ -4,6 +4,9 @@ Actualizado: 2026-10-10.
 Estado: diseño revisado; nuevos hitos sin implementar.
 Rama: `feature/galicia-viirs-risk`.
 Plan padre: [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md).
+Stack y ejecución: [RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md](RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md).
+Ese documento concreta tecnologías, pasos locales L1–L4 y publicaciones futuras
+P1–P3. Mantiene el contrato y las fases de este subplan; no autoriza despliegues.
 
 ## 1. Contrato confirmado y decisiones abiertas
 
@@ -325,6 +328,10 @@ Entrega: demo histórica de pronósticos reconstruidos y evaluación enlazada.
 Cierre: una fecha visible corresponde a su emisión y artefacto exactos.
 
 ### F8 — Operación, al final y con autorización
+
+Implementación técnica en L4 y P2/P3 del plan de tecnología. La demo histórica
+puede publicarse previamente mediante P1, también con autorización directa;
+no requiere activar la ejecución diaria.
 
 - [ ] Preparar ejecución idempotente a medianoche Europe/Madrid y manejo DST.
 - [ ] Definir qué ocurre si la ejecución se retrasa: no incorporar datos

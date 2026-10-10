@@ -78,6 +78,11 @@ Sections 7–8 now define executable architecture and phases A–G: source
 feasibility, reproducible sample, audit/territory, dataset, evaluation, local
 demo and authorized operation. Next deliverable: source availability audit and
 candidate temporal split; no new implementation milestone is marked complete.
+Concrete technology and local/cloud execution are specified in
+[RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md](RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md):
+L1–L4 local delivery, P1 historical publication and P2/P3 daily operation.
+The user confirmed reusing Google Cloud; costs and direct deployment approval
+remain required. Existing backend Buildpacks and frontend Hosting are preserved.
 
 Confirmed scope: portfolio with rigorous historical evaluation first, any
 accepted S-NPP detection per Galicia H3 cell/day (including continuing activity),
@@ -921,3 +926,4 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-10 | Recorded user decisions: 15 detection days accumulated in a month, sporadic activity across four consecutive months, comparison of 500/1,000 m radii with one selected, and comparison of all-Galicia versus forest/shrubland scope with one selected. Updated F0/F3/F4/F6 without marking implementation complete. |
 | 2026-10-10 | Confirmed a rolling 30-day window for the 15 distinct detection days criterion; closed the calendar-month versus rolling-window question in D1. Monthly recurrence remains a separate four-consecutive-month criterion. |
 | 2026-10-10 | Refined the forecast plan with seven execution phases A–G, repository integration points, artifact contracts, proposed API/catalog behavior, comparison protocol and acceptance checks. Recorded fixed-center radii and forest-cell selection with unchanged detection target; thresholds and center initialization remain explicit decisions. No deployment or implementation completion claimed. |
+| 2026-10-10 | Added RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md with repository-pinned runtimes/libraries, proposed ML/geospatial dependencies, local CLI/API/UI steps, inference container preparation and separate historical-demo/daily-operation deployments. Recorded Google Cloud reuse, proxy integration, Storage regional cost caveat, staged authorization and rollback; no installation or deployment performed. |

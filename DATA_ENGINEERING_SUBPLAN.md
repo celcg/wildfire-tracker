@@ -16,6 +16,9 @@ Los nuevos módulos, hitos y decisiones pendientes se definen en F0–F8.
 La arquitectura ejecutable, contratos entre etapas y fases A–G se detallan en
 las secciones 7–8 del mismo subplan. Priorizar una muestra completa con fechas
 locales y pronóstico disponible al emitir antes de ampliar el archivo histórico.
+Las tecnologías concretas, entornos Python, locks y CLI previstos están en
+[RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md](RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md),
+apartados 1–2. El servidor público no incorpora dependencias de entrenamiento.
 
 ## 1. Resultado y límites
 

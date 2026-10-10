@@ -128,6 +128,11 @@ Sus secciones 7 y 8 concretan módulos existentes/nuevos, contratos, almacenamie
 y siete fases de ejecución A–G con pasos verificables. Son el orden de trabajo
 vigente: viabilidad → muestra reproducible → auditoría/territorio → dataset
 → selección/evaluación → demo local → operación tras autorización.
+El [plan de tecnologías y despliegue](RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md)
+especifica versiones existentes, nuevas dependencias propuestas, arranque local,
+integración del proxy y dos publicaciones separadas: demo histórica primero y
+automatización diaria después. Google Cloud se reutiliza por decisión del usuario;
+ninguna publicación se ejecuta sin autorización directa en su fase final.
 Los bloques siguientes conservan requisitos útiles del plan original;
 las ampliaciones F0–F8 prevalecen ante discrepancias.
 

@@ -4,6 +4,13 @@ This guide records the current manual deployment contract. Automated production
 delivery and infrastructure-as-code remain later roadmap work in
 `IMPLEMENTATION_PLAN.md`.
 
+The proposed Galicia risk extension has a separate local-first and future
+deployment design in
+[RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md](RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md).
+Its new resources and configuration are not implemented by this document.
+Publishing the historical demo or activating daily predictions requires direct
+user authorization after the concrete release and costs are prepared.
+
 ## Required Validation
 
 Pull requests and `main` pushes run the small Level 2 suite in
