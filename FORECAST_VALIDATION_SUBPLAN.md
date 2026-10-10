@@ -27,17 +27,25 @@ Confirmado por el usuario el 2026-10-10:
   que cualquier cantidad de datos permite emitir.
 - Auditar focos industriales y comparar con/sin focos corroborados antes de
   decidir exclusiones definitivas.
+- Persistencia: 15 días distintos con detección acumulados en un mes, sin
+  exigir continuidad. Esta precisión sustituye la formulación anterior >15 días.
+- Recurrencia: actividad esporádica en cada uno de cuatro meses consecutivos;
+  registrar presencia mensual sin exigir actividad diaria.
+- Comparar radios de 500 y 1.000 metros y seleccionar uno para el experimento.
+- Comparar toda Galicia con variables de bosque/matorral frente a un ámbito
+  restringido a superficie forestal/matorral; elegir una opción tras evaluarlas.
 - Mantener trabajo local y servicios gratuitos preferidos. Cualquier
   despliegue o escritura cloud exige la autorización directa ya acordada.
 
-Pendiente de respuesta; no se fijarán valores por defecto silenciosos:
+Decisiones registradas y aspectos pendientes; no se fijarán valores por defecto
+silenciosos. D1–D4 ya tienen una dirección confirmada por el usuario:
 
 | ID | Decisión | Pregunta o alternativas |
 | --- | --- | --- |
-| D1 | Persistencia | ¿Más de 15 días consecutivos, días con detección acumulados o duración entre primera y última detección? |
-| D2 | Recurrencia | ¿Al menos una detección en cada mes durante cuántos meses y con qué continuidad? |
-| D3 | Misma zona | Radio métrico o resolución espacial fina; ofrecer comparación 375/750/1.000 m como ensayo, no parámetros aprobados. |
-| D4 | Papel de vegetación | Toda Galicia con fracciones forestales como variables, objetivo restringido a terreno forestal/matorral, o comparación de ambos. |
+| D1 | Persistencia | Confirmado: 15 días distintos acumulados en un mes. Concretar mes natural o ventana móvil antes de implementar. |
+| D2 | Recurrencia | Confirmado: actividad esporádica durante cuatro meses seguidos, con presencia en cada mes. No se ha fijado un máximo de frecuencia para «esporádica». |
+| D3 | Misma zona | Comparación aprobada: radios de 500 y 1.000 m; seleccionar solo uno con resultados de entrenamiento/validación. Método de agrupación y centro por acordar antes de implementarlo. |
+| D4 | Papel de vegetación | Comparación aprobada: toda Galicia con variables forestales frente a superficie forestal/matorral; elegir una opción. Definir clases y tratamiento de celdas mixtas antes de implementar. |
 | D5 | Cobertura mínima para datos parciales | Emisión parcial autorizada condicionada a validación; acordar umbral y comportamiento bajo ese mínimo tras el piloto. |
 | D6 | Exclusión industrial definitiva | Comparación con/sin focos corroborados autorizada; decidir política final con esa evidencia. |
 | D7 | Fuentes definitivas y partición temporal | Elegir después del piloto de acceso, cobertura, licencias, latencia y procedencia del pronóstico. |
@@ -168,7 +176,10 @@ El trabajo documental puede avanzar mientras quedan preguntas abiertas.
 
 ### F0 — Fijar el experimento
 
-- [ ] Resolver D1–D7 con el usuario; registrar decisiones y alternativas.
+- [x] Registrar las decisiones del usuario para D1–D4: días acumulados,
+  cuatro meses, comparación 500/1.000 m y comparación de ámbitos forestales.
+- [ ] Cerrar los detalles pendientes de D1–D7 con el usuario, apoyados en el
+  piloto; registrar criterios de comparación antes de evaluar alternativas.
 - [ ] Fijar el intervalo local del objetivo, etiqueta, política industrial y
   forestal, disponibilidad de ayer y modelo meteorológico candidato.
 - [ ] Registrar qué periodos fueron inspeccionados y reservar test antes de
@@ -210,12 +221,15 @@ no se presenta como validación completamente independiente de FIRMS.
 
 ### F3 — Estudio de actividad térmica persistente o mensual
 
-- [ ] Agrupar detecciones en sitios con escala fina aprobada en D3 antes de
-  agregarlas a H3 r5. No unir toda una celda por compartir ID.
+- [ ] Comparar agrupación de sitios con radios de 500 y 1.000 m antes de
+  agregar a H3 r5; medir fusiones de focos distintos, fragmentación y
+  corroboración externa. Elegir un solo radio sin consultar el test reservado.
+  No unir toda una celda por compartir ID.
 - [ ] Medir días únicos, duración entre extremos, racha consecutiva,
   meses con detección, huecos y dispersión espacial; no confundir métricas.
-- [ ] Evaluar por separado las hipótesis >15 días y recurrencia mensual
-  definidas en D1/D2, junto con distribución día/noche y FRP como auditoría.
+- [ ] Evaluar por separado 15 días distintos acumulados en un mes y actividad
+  esporádica presente en cuatro meses consecutivos, según D1/D2; deduplicar
+  detecciones del mismo día. Distribución día/noche y FRP sirven de auditoría.
 - [ ] Contrastar candidatos con PRTR, uso del suelo y eventos EGIF/EFFIS;
   persistencia también puede corresponder a incendios prolongados,
   rescoldos o quemas vegetales repetidas.
@@ -234,7 +248,9 @@ visibles y política acordada. Un foco industrial no excluye una celda completa.
 
 ### F4 — Variables forestales y meteorología disponible al emitir
 
-- [ ] Aprobar D4, versión forestal y método de muestreo meteorológico.
+- [ ] Preparar las dos opciones aprobadas en D4: toda Galicia con variables
+  forestales y ámbito restringido a superficie forestal/matorral. Acordar
+  clases, celdas mixtas, versión forestal y método de muestreo meteorológico.
 - [ ] Calcular fracciones forestales, matorral y restantes usos; comprobar
   costa, solapes, zonas sin cartografía y antigüedad.
 - [ ] Agregar ayer y previsión del día objetivo separadamente, con sus
@@ -269,6 +285,10 @@ Cierre: pruebas de corte temporal y controles de calidad aprobados antes de ML.
   vegetación, manteniendo la misma etiqueta para medir valor añadido.
 - [ ] Evaluar sensibilidad al tratamiento industrial; si cambia la etiqueta,
   informar población y prevalencia en vez de comparar AP directamente.
+- [ ] Comparar los dos ámbitos de D4 con los mismos cortes temporales;
+  informar cobertura, población, prevalencia y rendimiento en el subconjunto
+  común. Elegir un ámbito con validación y congelarlo antes del test; no elegir
+  por AP bruta entre poblaciones distintas. Documentar también el radio elegido.
 - [ ] Separar episodios largos entre bloques mediante una política temporal
   aprobada, sin usar el test para ajustar umbrales industriales o modelos.
 - [ ] AP, Recall@Top10%, Brier/calibración, incertidumbre por bloques y
@@ -318,7 +338,9 @@ claves con emisión y versión, y pruebas de calendario continuo. Los lags actua
 por filas no bastan si hay huecos; el acumulado debe probar fechas exactas y
 siete días previos, también al inicio de la partición.
 
-Siguiente paso: responder decisiones pendientes y realizar F1 con muestras
-pequeñas. No entrenar ni descargar todo el archivo antes del contrato acordado.
+Siguiente paso: realizar F1 con muestras pequeñas y concretar los detalles
+pendientes del contrato. Las comparaciones de D3/D4 ya están autorizadas;
+sus elecciones finales requieren evidencia de validación. No entrenar ni
+descargar todo el archivo antes del contrato acordado.
 Este documento cambia el plan, no la configuración ejecutable ni las etiquetas
 existentes. No se han descargado aquí nuevos datasets ni contactado proveedores.
