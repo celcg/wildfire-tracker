@@ -271,7 +271,7 @@ Acceptance criteria:
 
 Follow-up task plan: [paginate the explorer without additional API requests](EXPLORER_PAGINATION_PLAN.md).
 
-- [x] Paginate detections and clusters locally at 25 records per page without
+- [x] Paginate detections and clusters locally at 20 records per page without
   changing the complete map collection or making another API request.
 - [x] Move to the selected record's page when selection originates on the map
   and preserve keyboard focus recovery.
@@ -958,7 +958,8 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-10 | Confirmed a rolling 30-day window for the 15 distinct detection days criterion; closed the calendar-month versus rolling-window question in D1. Monthly recurrence remains a separate four-consecutive-month criterion. |
 | 2026-10-10 | Refined the forecast plan with seven execution phases A–G, repository integration points, artifact contracts, proposed API/catalog behavior, comparison protocol and acceptance checks. Recorded fixed-center radii and forest-cell selection with unchanged detection target; thresholds and center initialization remain explicit decisions. No deployment or implementation completion claimed. |
 | 2026-10-28 | Added linked task plans for explorer pagination, detection-loading performance, bounded AI-assisted search, and the cartographic redesign. No implementation task was marked complete. |
-| 2026-10-28 | Completed and verified the explorer pagination and cartographic redesign tasks locally: 25-row pages, cross-page map selection, compact map-first layout, bundled Barlow typography, factual copy, and documented design tokens. No deployment performed. |
+| 2026-10-28 | Completed and verified the explorer pagination and cartographic redesign tasks locally: 20-row pages, cross-page map selection, compact map-first layout, bundled Barlow typography, factual copy, and documented design tokens. No deployment performed. |
+| 2026-10-29 | Reduced explorer pages from 25 to 20 records while preserving client-side pagination, map selection, and keyboard focus. |
 | 2026-10-28 | Revised the local redesign after user review: restored the Wildfire Tracker name, original thermal flame, warm-black surfaces, and orange gradient while preserving the compact map-first layout and pagination. |
 | 2026-10-28 | Refined the restored identity: enlarged the original flame with heat rings, removed the unclear Methodology header link, made Privacy open and focus its disclosure, and replaced the refresh gradient with solid ember. |
 | 2026-10-28 | Polished the dark fire identity with a layered thermal-night background and a three-level button hierarchy: coral primary, warm selected layer, and raised dark secondary actions. |

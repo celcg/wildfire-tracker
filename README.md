@@ -20,7 +20,7 @@ The project demonstrates API design, third-party data integration, cloud deploym
 - Recent wildfire detections sourced from NASA FIRMS
 - Detection details including date, time, satellite, confidence, and fire radiative power
 - Responsive React interface hosted on Firebase
-- Paginated accessible records capped at 25 rows per page without extra API or
+- Paginated accessible records capped at 20 rows per page without extra API or
   NASA requests
 - REST API source-built and hosted as a managed service on Google Cloud Run
 - Configurable observation window and aggregate statistics

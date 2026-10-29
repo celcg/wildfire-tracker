@@ -1,4 +1,4 @@
-export const EXPLORER_PAGE_SIZE = 25;
+export const EXPLORER_PAGE_SIZE = 20;
 
 export function getPageForIndex(index, pageSize = EXPLORER_PAGE_SIZE) {
   if (!Number.isInteger(index) || index < 0) {

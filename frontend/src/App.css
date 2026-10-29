@@ -427,7 +427,7 @@ h2 {
 .key-level b { align-self: end; color: var(--ink); font-size: 0.78rem; }
 .key-level small { align-self: start; color: var(--ink-muted); font-size: 0.72rem; }
 
-/* Records remain one observation log; pagination caps DOM work at 25 rows. */
+/* Records remain one observation log; pagination caps DOM work at 20 rows. */
 .data-explorer { margin-top: 52px; scroll-margin-top: 20px; border-top: 1px solid var(--line-strong); }
 .explorer-heading { display: flex; gap: 24px; align-items: end; justify-content: space-between; padding: 26px 0 16px; }
 .result-count { margin: 0; color: var(--ink-muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }

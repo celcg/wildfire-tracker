@@ -85,7 +85,7 @@ test("exposes cluster persistence, trend, satellites, and location", () => {
   );
 });
 
-test("renders at most 25 records and navigates to the remaining page", async () => {
+test("renders at most 20 records and navigates to the remaining page", async () => {
   const user = userEvent.setup();
   render(
     <DataExplorer
@@ -98,13 +98,13 @@ test("renders at most 25 records and navigates to the remaining page", async () 
     />,
   );
 
-  expect(screen.getAllByRole("button", { name: "Show on map" })).toHaveLength(25);
-  expect(screen.getByText("Showing 1–25 of 30")).toBeVisible();
+  expect(screen.getAllByRole("button", { name: "Show on map" })).toHaveLength(20);
+  expect(screen.getByText("Showing 1–20 of 30")).toBeVisible();
 
   await user.click(screen.getByRole("button", { name: "Next" }));
 
-  expect(screen.getAllByRole("button", { name: "Show on map" })).toHaveLength(5);
-  expect(screen.getByText("Showing 26–30 of 30")).toBeVisible();
+  expect(screen.getAllByRole("button", { name: "Show on map" })).toHaveLength(10);
+  expect(screen.getByText("Showing 21–30 of 30")).toBeVisible();
   expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
 });
 
@@ -131,7 +131,7 @@ test("opens the page that contains a map-selected record", async () => {
   expect(
     await screen.findByRole("button", { name: "Selected on map" }),
   ).toBeVisible();
-  expect(screen.getByText("Showing 26–30 of 30")).toBeVisible();
+  expect(screen.getByText("Showing 21–30 of 30")).toBeVisible();
 
   await user.click(screen.getByRole("button", { name: "Previous" }));
   expect(screen.queryByRole("button", { name: "Selected on map" })).toBeNull();
