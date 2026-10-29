@@ -18,6 +18,7 @@ dist/
 .firebase/
 playwright-report/
 test-results/
+.impeccable/
 
 # Editors and operating systems
 .idea/

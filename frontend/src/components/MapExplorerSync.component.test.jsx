@@ -55,6 +55,7 @@ const fire = {
 
 function Harness() {
   const [selectedKey, setSelectedKey] = useState(null);
+  const [focusRequest, setFocusRequest] = useState(0);
   const selectedResultRef = useRef(null);
   return (
     <>
@@ -64,13 +65,14 @@ function Harness() {
         incidents={[]}
         layer="detections"
         loading={false}
-        onReturnToResult={() => selectedResultRef.current?.focus()}
+        onReturnToResult={() => setFocusRequest((request) => request + 1)}
         onSelect={setSelectedKey}
         observationWindow="Last 24 hours"
         selectedKey={selectedKey}
       />
       <DataExplorer
         fires={[fire]}
+        focusRequest={focusRequest}
         incidents={[]}
         layer="detections"
         onSelect={setSelectedKey}

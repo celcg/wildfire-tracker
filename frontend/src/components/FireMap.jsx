@@ -334,20 +334,21 @@ export function FireMap({
       className="map-section"
       aria-busy={loading}
       aria-labelledby="map-title"
-      data-reveal
     >
       <div className="map-heading">
         <div>
-          <p className="section-index">
-            {showClusters ? "DERIVED CLUSTER LAYER" : "LIVE DETECTION LAYER"}
-          </p>
           <h2 id="map-title">
-            {showClusters ? "Possible fire areas" : "Thermal activity map"}
+            {showClusters ? "Possible fire areas" : "Thermal detections"}
           </h2>
+          <p>
+            {showClusters
+              ? "Nearby observations linked into analytical groups."
+              : "Recent satellite observations across the Iberian Peninsula."}
+          </p>
         </div>
         <div className="source-badge">
           <span aria-hidden="true" />
-          NASA FIRMS · VIIRS
+          NASA FIRMS / VIIRS
         </div>
       </div>
 
@@ -425,9 +426,6 @@ export function FireMap({
             />
           )}
         </MapContainer>
-        {/* Corner guides reinforce the satellite-viewfinder metaphor. */}
-        <div className="map-corner map-corner-top" aria-hidden="true" />
-        <div className="map-corner map-corner-bottom" aria-hidden="true" />
       </div>
 
       {!loading ? (

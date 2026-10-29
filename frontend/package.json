@@ -11,7 +11,7 @@
     "dev": "vite --configLoader native",
     "build": "vite build --configLoader native",
     "build:production": "node scripts/validateProductionEnv.js && vite build --configLoader native",
-    "lint": "oxlint",
+    "lint": "oxlint src",
     "test": "npm run test:unit && npm run test:components",
     "test:unit": "node --test",
     "test:components": "vitest run --configLoader native",
@@ -20,6 +20,7 @@
     "preview": "vite preview --configLoader native"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
     "firebase": "^12.19.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",

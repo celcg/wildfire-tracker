@@ -269,6 +269,12 @@ Acceptance criteria:
 
 ### 1.2 Add An Accessible Data Explorer
 
+Follow-up task plan: [paginate the explorer without additional API requests](EXPLORER_PAGINATION_PLAN.md).
+
+- [x] Paginate detections and clusters locally at 25 records per page without
+  changing the complete map collection or making another API request.
+- [x] Move to the selected record's page when selection originates on the map
+  and preserve keyboard focus recovery.
 - [x] Define the minimum list fields for detections and clusters: observed time,
   confidence, satellite, FRP, location, persistence, and trend where available.
 - [x] Add a semantic list or table beside or below the map with a mobile layout.
@@ -282,6 +288,8 @@ Acceptance criteria:
 
 Tests:
 
+- [x] Test page bounds, partial final pages, controls, and cross-page map
+  selection.
 - [x] Add component tests for keyboard selection and map/list synchronization.
 - [x] Add automated accessibility checks for the primary page states.
 - [x] Add a browser smoke test for keyboard-only detection exploration.
@@ -293,6 +301,8 @@ Acceptance criteria:
 - The primary flow has no serious automated accessibility violations.
 
 ### 1.3 Add Filtering And Sorting
+
+Future task plan: [add bounded AI-assisted natural-language search](AI_ASSISTED_SEARCH_PLAN.md).
 
 - [ ] Define filter semantics for confidence, minimum FRP, satellite, time, and
   cluster persistence or trend.
@@ -335,6 +345,24 @@ Acceptance criteria:
 - A shared URL reconstructs the same useful map view.
 - Declining geolocation does not degrade the rest of the application.
 - Navigation controls work on desktop, mobile, and keyboard-only flows.
+
+### 1.5 Redesign The Interface As A Cartographic Tool
+
+Detailed task plan: [replace the generic HUD treatment with a map-first thermal atlas](CARTOGRAPHIC_REDESIGN_PLAN.md).
+
+- [x] Approve the dark fire identity, dark-map visual direction, and factual
+  copy after visual review replaced the initial mineral-shell proposal.
+- [x] Make the map and data freshness visible in the first viewport.
+- [x] Replace decorative telemetry with source, state, legend, and methodology.
+- [x] Preserve current accessibility, request-state, selection, and refresh
+  behavior through the redesign.
+
+Acceptance criteria:
+
+- The interface is specific to satellite wildfire observation rather than a
+  reusable analytics-dashboard template.
+- Desktop and mobile users can identify location, period, freshness, source,
+  and limitations within the primary flow.
 
 ## Milestone 2: Historical Intelligence
 
@@ -444,6 +472,8 @@ Acceptance criteria:
 ## Milestone 3: Performance And Scale
 
 ### 3.1 Establish Measurements
+
+Detailed task plan: [diagnose and improve detection loading performance](DETECTION_LOADING_PERFORMANCE_PLAN.md).
 
 - [ ] Record representative detection counts for each observation window.
 - [ ] Benchmark NASA normalization, clustering, JSON serialization, response
@@ -894,6 +924,7 @@ research justifies them.
 | 2026-09-23 | Component accessibility uses Vitest, Testing Library, jsdom, and axe-core; critical keyboard flow uses Playwright Chromium. | Node's unit runner cannot execute JSX interactions or validate real browser focus and fragment navigation. |
 | 2026-10-09 | Prioritize the separate Galicia VIIRS experiment before the remaining main roadmap. | The user requested a rigorous portfolio demo first, later daily forecasts, flexible timing and free services preferred. Labels cover any accepted S-NPP detection, including ongoing activity; retrospective weather-based estimates do not establish operational forecast skill. Details and acceptance gates are in GALICIA_RISK_PLAN.md. |
 | 2026-10-10 | Prioritize forecasts available at 00:00 Europe/Madrid for the day starting, with previous-day observations; allow partial observations only with validated quality handling. | User confirmed timing and fewer years if necessary; add official-event audit, forest context and comparison with/without corroborated industrial sites. Provider choices and unresolved thresholds need user decisions after pilot evidence. |
+| 2026-10-28 | Keep the map-first workspace but restore the original warm-black, orange-gradient, and thermal-flame identity after visual review. | The initial mineral shell lost the project's recognizable character; compact controls and factual cartography remain, without restoring the oversized hero, grid, or radar. |
 
 ## Plan Change Log
 
@@ -926,4 +957,9 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-10 | Recorded user decisions: 15 detection days accumulated in a month, sporadic activity across four consecutive months, comparison of 500/1,000 m radii with one selected, and comparison of all-Galicia versus forest/shrubland scope with one selected. Updated F0/F3/F4/F6 without marking implementation complete. |
 | 2026-10-10 | Confirmed a rolling 30-day window for the 15 distinct detection days criterion; closed the calendar-month versus rolling-window question in D1. Monthly recurrence remains a separate four-consecutive-month criterion. |
 | 2026-10-10 | Refined the forecast plan with seven execution phases A–G, repository integration points, artifact contracts, proposed API/catalog behavior, comparison protocol and acceptance checks. Recorded fixed-center radii and forest-cell selection with unchanged detection target; thresholds and center initialization remain explicit decisions. No deployment or implementation completion claimed. |
+| 2026-10-28 | Added linked task plans for explorer pagination, detection-loading performance, bounded AI-assisted search, and the cartographic redesign. No implementation task was marked complete. |
+| 2026-10-28 | Completed and verified the explorer pagination and cartographic redesign tasks locally: 25-row pages, cross-page map selection, compact map-first layout, bundled Barlow typography, factual copy, and documented design tokens. No deployment performed. |
+| 2026-10-28 | Revised the local redesign after user review: restored the Wildfire Tracker name, original thermal flame, warm-black surfaces, and orange gradient while preserving the compact map-first layout and pagination. |
+| 2026-10-28 | Refined the restored identity: enlarged the original flame with heat rings, removed the unclear Methodology header link, made Privacy open and focus its disclosure, and replaced the refresh gradient with solid ember. |
+| 2026-10-28 | Polished the dark fire identity with a layered thermal-night background and a three-level button hierarchy: coral primary, warm selected layer, and raised dark secondary actions. |
 | 2026-10-10 | Added RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md with repository-pinned runtimes/libraries, proposed ML/geospatial dependencies, local CLI/API/UI steps, inference container preparation and separate historical-demo/daily-operation deployments. Recorded Google Cloud reuse, proxy integration, Storage regional cost caveat, staged authorization and rollback; no installation or deployment performed. |

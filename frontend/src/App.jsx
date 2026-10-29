@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
-import { ControlDeck } from "./components/ControlDeck";
+import { AppHeader } from "./components/AppHeader";
 import { DataExplorer } from "./components/DataExplorer";
 import { DataErrorNotice } from "./components/DataErrorNotice";
 import { FireMap } from "./components/FireMap";
-import { Hero } from "./components/Hero";
 import { IncidentSummary } from "./components/IncidentSummary";
+import { ObservationToolbar } from "./components/ObservationToolbar";
 import { PrivacyNotice } from "./components/PrivacyNotice";
 import { StaleDataNotice } from "./components/StaleDataNotice";
 import {
@@ -15,17 +15,16 @@ import {
 } from "./config/fireConfig";
 import { useFireData } from "./hooks/useFireData";
 import { useIncidentData } from "./hooks/useIncidentData";
-import { useScrollReveal } from "./hooks/useScrollReveal";
 import { refreshAllLayers } from "./services/refreshAllLayers";
 
 const EMPTY_INCIDENTS = [];
 
 function App() {
-  useScrollReveal();
   const [days, setDays] = useState(DEFAULT_OBSERVATION_DAYS);
   const [layer, setLayer] = useState("detections");
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
+  const [selectionFocusRequest, setSelectionFocusRequest] = useState(0);
   const selectedResultRef = useRef(null);
 
   // App composes feature sections; networking and browser APIs stay in hooks.
@@ -86,9 +85,9 @@ function App() {
       <a className="skip-link" href="#data-explorer">
         Skip to data explorer
       </a>
-      <Hero />
+      <AppHeader />
 
-      <ControlDeck
+      <ObservationToolbar
         days={days}
         activeCount={activeCount}
         lastUpdated={activeLastUpdated}
@@ -115,22 +114,27 @@ function App() {
         <IncidentSummary collection={activeCollection} />
       ) : null}
 
-      <FireMap
-        fires={fireData.fires}
-        incidents={activeCollection?.incidents ?? EMPTY_INCIDENTS}
-        hasError={Boolean(activeError)}
-        layer={layer}
-        loading={activeLoading}
-        onReturnToResult={() => selectedResultRef.current?.focus()}
-        onSelect={setSelectedKey}
-        observationWindow={observationWindow}
-        selectedKey={selectedKey}
-      />
+      <div className="map-workspace">
+        <FireMap
+          fires={fireData.fires}
+          incidents={activeCollection?.incidents ?? EMPTY_INCIDENTS}
+          hasError={Boolean(activeError)}
+          layer={layer}
+          loading={activeLoading}
+          onReturnToResult={() =>
+            setSelectionFocusRequest((request) => request + 1)
+          }
+          onSelect={setSelectedKey}
+          observationWindow={observationWindow}
+          selectedKey={selectedKey}
+        />
+      </div>
 
       <DataExplorer
         fires={fireData.fires}
         incidents={activeCollection?.incidents ?? EMPTY_INCIDENTS}
         layer={layer}
+        focusRequest={selectionFocusRequest}
         onSelect={setSelectedKey}
         selectedKey={selectedKey}
         selectedResultRef={selectedResultRef}
@@ -139,9 +143,9 @@ function App() {
       <PrivacyNotice />
 
       <footer className="site-footer">
-        <span>Environmental intelligence through open data</span>
+        <span>Satellite observations, not confirmed fire reports.</span>
         <span>
-          Data source · NASA FIRMS · <a href="#privacy">Privacy</a>
+          Data from NASA FIRMS / VIIRS · <a href="#privacy">Privacy</a>
         </span>
       </footer>
     </main>

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   formatConfidence,
   formatCoordinates,
@@ -14,6 +14,10 @@ import {
   formatTrend,
   getIncidentSeverity,
 } from "../domain/incidentPresentation";
+import {
+  getPageForIndex,
+  paginate,
+} from "../domain/explorerPagination";
 
 function ResultFields({ fields }) {
   return (
@@ -121,6 +125,7 @@ function IncidentResult({ incident, index, isSelected, onSelect, selectedRef }) 
 
 export function DataExplorer({
   fires,
+  focusRequest = 0,
   incidents,
   layer,
   onSelect,
@@ -129,10 +134,43 @@ export function DataExplorer({
 }) {
   const showClusters = layer === "clusters";
   const results = showClusters ? incidents : fires;
+  const scopeKey = `${layer}:${results.length}`;
+  const selectedIndex = selectedKey
+    ? results.findIndex((result) =>
+        showClusters
+          ? result.id === selectedKey
+          : getFireKey(result) === selectedKey,
+      )
+    : -1;
+  const [pageState, setPageState] = useState({
+    page: 1,
+    focusRequest,
+    scopeKey,
+    selectedKey: null,
+  });
+  const requestedPage =
+    pageState.scopeKey !== scopeKey
+      ? 1
+      : pageState.selectedKey !== selectedKey ||
+          pageState.focusRequest !== focusRequest
+        ? getPageForIndex(selectedIndex)
+        : pageState.page;
+  const pagination = useMemo(
+    () => paginate(results, requestedPage),
+    [requestedPage, results],
+  );
+  const changePage = (page) =>
+    setPageState({ focusRequest, page, scopeKey, selectedKey });
 
   useEffect(() => {
     selectedResultRef.current?.scrollIntoView?.({ block: "nearest" });
-  }, [selectedKey, selectedResultRef]);
+  }, [pagination.page, selectedKey, selectedResultRef]);
+
+  useEffect(() => {
+    if (focusRequest > 0) {
+      selectedResultRef.current?.focus();
+    }
+  }, [focusRequest, pagination.page, selectedResultRef]);
 
   return (
     <section
@@ -143,40 +181,72 @@ export function DataExplorer({
     >
       <header className="explorer-heading">
         <div>
-          <p className="section-index">ACCESSIBLE DATA EXPLORER</p>
           <h2 id="explorer-title">
             {showClusters ? "Possible cluster records" : "Detection records"}
           </h2>
+          <p>
+            Inspect the satellite observations behind the map without using
+            map controls.
+          </p>
         </div>
-        <p aria-live="polite">
+        <p className="result-count" aria-live="polite">
           {results.length} {results.length === 1 ? "result" : "results"}
         </p>
       </header>
 
       {results.length > 0 ? (
-        <ol className="result-list">
-          {results.map((result, index) =>
-            showClusters ? (
-              <IncidentResult
-                incident={result}
-                index={index}
-                isSelected={selectedKey === result.id}
-                key={result.id}
-                onSelect={onSelect}
-                selectedRef={selectedResultRef}
-              />
-            ) : (
-              <DetectionResult
-                fire={result}
-                index={index}
-                isSelected={selectedKey === getFireKey(result)}
-                key={getFireKey(result)}
-                onSelect={onSelect}
-                selectedRef={selectedResultRef}
-              />
-            ),
-          )}
-        </ol>
+        <>
+          <ol className="result-list" start={pagination.startIndex + 1}>
+            {pagination.items.map((result, index) =>
+              showClusters ? (
+                <IncidentResult
+                  incident={result}
+                  index={pagination.startIndex + index}
+                  isSelected={selectedKey === result.id}
+                  key={result.id}
+                  onSelect={onSelect}
+                  selectedRef={selectedResultRef}
+                />
+              ) : (
+                <DetectionResult
+                  fire={result}
+                  index={pagination.startIndex + index}
+                  isSelected={selectedKey === getFireKey(result)}
+                  key={getFireKey(result)}
+                  onSelect={onSelect}
+                  selectedRef={selectedResultRef}
+                />
+              ),
+            )}
+          </ol>
+
+          {pagination.totalPages > 1 ? (
+            <nav className="pagination" aria-label="Record pages">
+              <button
+                type="button"
+                disabled={pagination.page === 1}
+                onClick={() => changePage(pagination.page - 1)}
+              >
+                Previous
+              </button>
+              <p aria-live="polite">
+                Page <strong>{pagination.page}</strong> of {pagination.totalPages}
+                <small>
+                  Showing {pagination.startIndex + 1}–
+                  {pagination.startIndex + pagination.items.length} of{" "}
+                  {pagination.totalItems}
+                </small>
+              </p>
+              <button
+                type="button"
+                disabled={pagination.page === pagination.totalPages}
+                onClick={() => changePage(pagination.page + 1)}
+              >
+                Next
+              </button>
+            </nav>
+          ) : null}
+        </>
       ) : (
         <p className="explorer-empty">No records are available to explore.</p>
       )}

@@ -4,7 +4,7 @@
  */
 export function DataGuide({ showClusters }) {
   return (
-    <details className="data-guide">
+    <details className="data-guide" id="methodology">
       <summary>
         <span>How to read the satellite data</span>
         <i aria-hidden="true" />

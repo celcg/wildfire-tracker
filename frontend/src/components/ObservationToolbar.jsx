@@ -1,7 +1,7 @@
 import { MAP_LAYERS, OBSERVATION_WINDOWS } from "../config/fireConfig";
 import { formatSyncTime } from "../domain/firePresentation";
 
-export function ControlDeck({
+export function ObservationToolbar({
   days,
   activeCount,
   lastUpdated,
@@ -12,16 +12,14 @@ export function ControlDeck({
   onRefresh,
   readoutLabel,
 }) {
-  const handleDaysChange = (event) => onDaysChange(event.target.value);
-
   return (
-    <section className="control-deck" aria-label="Map controls">
+    <section className="observation-toolbar" aria-label="Observation controls">
       <div className="control-field">
-        <label htmlFor="days">Observation window</label>
+        <label htmlFor="days">Time window</label>
         <select
           id="days"
           value={days}
-          onChange={handleDaysChange}
+          onChange={(event) => onDaysChange(event.target.value)}
           disabled={loading}
         >
           {OBSERVATION_WINDOWS.map((window) => (
@@ -47,28 +45,23 @@ export function ControlDeck({
         ))}
       </div>
 
+      <div className="data-readout" aria-live="polite">
+        <strong>{activeCount}</strong>
+        <span>{loading ? `Updating ${readoutLabel}` : readoutLabel}</span>
+        <small>Retrieved {formatSyncTime(lastUpdated)}</small>
+      </div>
+
       <button
         className={"refresh-button" + (loading ? " is-loading" : "")}
         type="button"
         onClick={onRefresh}
         disabled={loading}
       >
-        {/* The wrapper carries motion so the SVG remains simple and cheap. */}
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" />
         </svg>
-        {loading ? "Synchronising" : "Refresh data"}
+        {loading ? "Refreshing" : "Refresh data"}
       </button>
-
-      <div className="data-readout" aria-live="polite">
-        <span className="readout-value">{activeCount}</span>
-        <span className="readout-label">
-          {loading ? "Updating " : ""}{readoutLabel}
-        </span>
-        <span className="readout-time">
-          Retrieved · {formatSyncTime(lastUpdated)}
-        </span>
-      </div>
     </section>
   );
 }

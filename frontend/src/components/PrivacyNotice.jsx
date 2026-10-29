@@ -10,7 +10,7 @@ export function PrivacyNotice() {
     <details className="privacy-notice" id="privacy">
       <summary>
         <span>Privacy notice</span>
-        <small>No advertising cookies or analytics</small>
+        <small>No advertising cookies or behavioural analytics</small>
       </summary>
       <div className="privacy-content">
         <p className="privacy-intro">

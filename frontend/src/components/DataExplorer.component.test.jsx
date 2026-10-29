@@ -30,6 +30,14 @@ const incident = {
   trend: "stable",
 };
 
+function createFires(count) {
+  return Array.from({ length: count }, (_, index) => ({
+    ...fire,
+    latitude: fire.latitude + index * 0.001,
+    acq_time: String(1000 + index).padStart(4, "0"),
+  }));
+}
+
 test("exposes every detection popup field and selects it by keyboard", async () => {
   const user = userEvent.setup();
   const onSelect = vi.fn();
@@ -75,6 +83,63 @@ test("exposes cluster persistence, trend, satellites, and location", () => {
     "aria-pressed",
     "true",
   );
+});
+
+test("renders at most 25 records and navigates to the remaining page", async () => {
+  const user = userEvent.setup();
+  render(
+    <DataExplorer
+      fires={createFires(30)}
+      incidents={[]}
+      layer="detections"
+      onSelect={() => {}}
+      selectedKey={null}
+      selectedResultRef={createRef()}
+    />,
+  );
+
+  expect(screen.getAllByRole("button", { name: "Show on map" })).toHaveLength(25);
+  expect(screen.getByText("Showing 1–25 of 30")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Next" }));
+
+  expect(screen.getAllByRole("button", { name: "Show on map" })).toHaveLength(5);
+  expect(screen.getByText("Showing 26–30 of 30")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+});
+
+test("opens the page that contains a map-selected record", async () => {
+  const user = userEvent.setup();
+  const fires = createFires(30);
+  const selectedFire = fires[27];
+  const selectedResultRef = createRef();
+  const props = {
+    fires,
+    incidents: [],
+    layer: "detections",
+    onSelect: () => {},
+    selectedKey: `${selectedFire.latitude}-${selectedFire.longitude}-${selectedFire.acq_date}-${selectedFire.acq_time}-${selectedFire.satellite}`,
+    selectedResultRef,
+  };
+  const { rerender } = render(
+    <DataExplorer
+      {...props}
+      focusRequest={0}
+    />,
+  );
+
+  expect(
+    await screen.findByRole("button", { name: "Selected on map" }),
+  ).toBeVisible();
+  expect(screen.getByText("Showing 26–30 of 30")).toBeVisible();
+
+  await user.click(screen.getByRole("button", { name: "Previous" }));
+  expect(screen.queryByRole("button", { name: "Selected on map" })).toBeNull();
+
+  rerender(<DataExplorer {...props} focusRequest={1} />);
+  expect(
+    await screen.findByRole("button", { name: "Selected on map" }),
+  ).toHaveFocus();
 });
 
 test("primary loading, error, and result states have no axe violations", async () => {
