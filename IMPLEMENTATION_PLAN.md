@@ -1,6 +1,6 @@
 # Wildfire Tracker Implementation Plan
 
-Last updated: 2026-10-10
+Last updated: 2026-10-29
 
 ## Purpose
 
@@ -66,9 +66,18 @@ the final change summary.
 
 ## Current Focus
 
-**Priority: Galicia forecast experiment, local historical backtest before deployment.**
+**Active task: bounded AI-assisted search and measured request performance.**
 
-The user has prioritized this separate feature over the remaining main roadmap.
+The live Gemini 3.5 Flash-Lite evaluation passed the release thresholds with
+90.91% exact match, 100% schema validity, 100% safe rejection, and zero false
+accepts. A protected local API route, separate fail-closed client/global cost
+limits, token accounting, deterministic browser filtering, and compact search
+UI are implemented; full validation, visual review, cloud configuration, and
+deployment remain open.
+
+**Next planned priority: Galicia forecast experiment, local historical backtest before deployment.**
+
+This separate feature remains the next planned priority after the active search work.
 See [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md) for the experiment contract,
 data pipeline, evaluation, integration, acceptance criteria, and later daily
 operation. Data foundations are implemented; the new forecast contract,
@@ -101,6 +110,11 @@ Clarify remaining grouping details before implementation; repeated
 detections alone do not establish an industrial classification.
 
 **Resume after the priority feature: Milestone 1.3, add filtering and sorting.**
+
+User-directed work on 2026-10-29 also started two bounded foundations: safe
+request-stage measurement plus snapshot-keyed incident caching, and a strict
+provider-independent AI filter contract. Vertex AI remains disabled and no AI
+route is public; production baselines and model evaluation are still required.
 
 Milestone 0 and Steps 1.1–1.2 are implemented and verified locally. The live map
 has explicit request states, independent parallel refresh, and an accessible
@@ -304,6 +318,11 @@ Acceptance criteria:
 
 Future task plan: [add bounded AI-assisted natural-language search](AI_ASSISTED_SEARCH_PLAN.md).
 
+- [x] Add a strict provider-independent model-output schema, bounded input and
+  output validation, and an initial bilingual adversarial evaluation set.
+- [ ] Evaluate Gemini 3.5 Flash-Lite against the versioned set before adding a
+  public endpoint or enabling Vertex AI.
+
 - [ ] Define filter semantics for confidence, minimum FRP, satellite, time, and
   cluster persistence or trend.
 - [ ] Implement client-side filters first while response sizes remain bounded.
@@ -475,6 +494,9 @@ Acceptance criteria:
 
 Detailed task plan: [diagnose and improve detection loading performance](DETECTION_LOADING_PERFORMANCE_PLAN.md).
 
+- [x] Add privacy-safe backend and frontend request-stage instrumentation.
+- [x] Add a deterministic synthetic benchmark with median and p95 reporting.
+
 - [ ] Record representative detection counts for each observation window.
 - [ ] Benchmark NASA normalization, clustering, JSON serialization, response
   size, and frontend rendering separately.
@@ -489,8 +511,8 @@ Acceptance criteria:
 
 ### 3.2 Reduce Backend Work
 
-- [ ] Cache incident derivations with the corresponding immutable fire snapshot.
-- [ ] Replace the global refresh lock with per-`days` coordination while
+- [x] Cache incident derivations with the corresponding immutable fire snapshot.
+- [x] Replace the global refresh lock with per-`days` coordination while
   preserving same-key request coalescing.
 - [ ] Add explicit response models for `/fires` and `/stats`.
 - [ ] Evaluate time buckets plus a spatial grid or tree to reduce clustering's
@@ -960,6 +982,9 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-28 | Added linked task plans for explorer pagination, detection-loading performance, bounded AI-assisted search, and the cartographic redesign. No implementation task was marked complete. |
 | 2026-10-28 | Completed and verified the explorer pagination and cartographic redesign tasks locally: 20-row pages, cross-page map selection, compact map-first layout, bundled Barlow typography, factual copy, and documented design tokens. No deployment performed. |
 | 2026-10-29 | Reduced explorer pages from 25 to 20 records while preserving client-side pagination, map selection, and keyboard focus. |
+| 2026-10-29 | Started measured request-performance work with safe stage timings and snapshot-keyed incident derivation caching; added a disabled-by-default strict AI filter contract and bilingual adversarial evaluation seed set without calling Vertex AI. |
+| 2026-10-29 | Measured cached clustering and per-window coordination locally; added the disabled Gemini 3.5 Flash-Lite structured-output adapter and deterministic evaluation runner without making a cloud model call. |
+| 2026-10-29 | Ran the authorized Vertex evaluation, added privacy-safe token accounting, passed AI acceptance thresholds, and implemented the protected local search route, separate cost buckets, deterministic browser filters, privacy copy, and compact search UI. No deployment was performed. |
 | 2026-10-28 | Revised the local redesign after user review: restored the Wildfire Tracker name, original thermal flame, warm-black surfaces, and orange gradient while preserving the compact map-first layout and pagination. |
 | 2026-10-28 | Refined the restored identity: enlarged the original flame with heat rings, removed the unclear Methodology header link, made Privacy open and focus its disclosure, and replaced the refresh gradient with solid ember. |
 | 2026-10-28 | Polished the dark fire identity with a layered thermal-night background and a three-level button hierarchy: coral primary, warm selected layer, and raised dark secondary actions. |

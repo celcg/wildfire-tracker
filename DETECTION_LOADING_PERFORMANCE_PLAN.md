@@ -5,6 +5,24 @@
 Reduce the time until useful detections are visible without weakening cache,
 NASA protection, validation, stale-if-error behavior, or rate limiting.
 
+## Implementation status
+
+- Added privacy-safe backend `Server-Timing` stages for data access,
+  transformation, clustering, and total request time.
+- Added in-memory frontend timings for App Check/security headers, network,
+  body download plus JSON parsing, and total API time; these values are not
+  logged.
+- Cached incident derivations by immutable process-local fire snapshot and
+  coalesced concurrent derivations for the same observation window.
+- Replaced the global NASA refresh lock with per-window single-flight locks, so
+  a cold request for one observation window does not block a different window.
+- Added a deterministic benchmark with median/p95 reporting. On the 2026-10-29
+  local run with 400 synthetic detections, cached clustering fell from 190.062
+  ms median to 0.004 ms; two simulated 50 ms window loads improved from 116.919
+  ms sequential to 68.450 ms in parallel.
+- Production baselines, rendering measurements, and numeric budgets remain
+  open; no claim of end-to-end performance completion is made yet.
+
 ## Investigation first
 
 Instrument the existing request path before selecting an optimization:

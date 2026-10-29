@@ -124,6 +124,16 @@ For a pull request requiring Level 4, add the `full-validation` label or start
 `.github/workflows/full-validation.yml` manually. The hosted workflow runs both
 applications because it is reserved for these exceptional changes.
 
+Performance benchmarks are evidence, not pass/fail unit tests. Run the local
+synthetic benchmark from `backend/` without NASA access:
+
+```powershell
+.\.venv\Scripts\python.exe benchmark_detection_loading.py --count 400 --iterations 7
+```
+
+The live AI evaluation is a separately authorized Google Cloud operation. Its
+runner prints aggregate metrics only and must not be used in normal test suites.
+
 ## Test Inventory
 
 ### Backend
@@ -137,6 +147,10 @@ applications because it is reserved for these exceptional changes.
 | `test_rate_limit.py` | Security and abuse protection | Client identity, App Check, Firestore bucket, or fallback changes |
 | `test_logging.py` | Privacy and HTTP logging | Logging, redaction, request IDs, rotation, or CORS changes |
 | `test_historical_ingest.py` | Persistence and Scheduler | Historical IDs, ingestion, Scheduler auth, BigQuery SQL/schema/migration changes |
+| `test_ai_search.py` | AI trust boundary and evaluation metrics | Filter schema, prompt boundary, evaluation cases, or metric changes |
+| `test_vertex_ai_search.py` | Vertex adapter without cloud access | Model, structured output, timeout, retry, or SDK changes |
+| `test_ai_rate_limit.py` | AI cost and abuse boundary | Client/global AI buckets, fail-closed behavior, or body limits |
+| `test_performance_benchmark.py` | Synthetic benchmark contract | Benchmark dataset or reported metric changes |
 
 `run_smoke_tests.py` selects representative tests across these boundaries. It is
 not a replacement for the relevant test file when changing a boundary itself.
@@ -149,6 +163,7 @@ not a replacement for the relevant test file when changing a boundary itself.
 | `config/firebaseConfig.test.js` | App Check configuration | Firebase or production attestation changes |
 | `domain/incidentPresentation.test.js` | Cluster presentation | Cluster area visibility or incident presentation changes |
 | `domain/firePresentation.test.js` | Detection presentation | Detection time, location, FRP, or confidence presentation changes |
+| `domain/fireSearch.test.js` | Deterministic interpreted filters | Named areas, AI filter application, sorting, or limits |
 | `services/cacheStorage.test.js` | Browser persistence | Cache version, key, TTL, serialization, or storage behavior changes |
 | `services/clientIdentity.test.js` | Anonymous identity | Installation UUID generation or persistence changes |
 | `services/fireApi.test.js` | HTTP contract | URLs, headers, freshness, errors, or response handling changes |

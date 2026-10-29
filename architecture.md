@@ -27,6 +27,7 @@ flowchart LR
     Hosting --> SPA[React SPA]
     SPA -->|JSON + security headers| API[FastAPI on Cloud Run]
     API -->|bounded CSV request| NASA[NASA FIRMS]
+    API -->|question + closed JSON schema| Vertex[Vertex AI Gemini Flash-Lite]
     API <--> Firestore[(Firestore token buckets)]
     Scheduler[Cloud Scheduler] -->|OIDC POST| API
     API --> BigQuery[(BigQuery history)]
@@ -48,7 +49,8 @@ the public map never reads from it and remains operational if ingestion fails.
 | `components/` | Presentational and interaction boundaries such as controls, map, summaries, errors, privacy information, and accessible data exploration. |
 | `useFireData` | Detection state, request cancellation, browser-cache reads/writes, freshness, and latest-request-wins behavior. |
 | `useIncidentData` | Lazy cluster loading with the same cancellation and cache semantics. Clusters are not fetched until requested. |
-| `fireApi.js` | HTTP contract, query construction, response-shape checks, freshness headers, request IDs, and typed client errors. |
+| `fireApi.js` | HTTP contract, query construction, response-shape checks, freshness headers, request IDs, typed client errors, and in-memory request-stage timings. |
+| `FireSearch.jsx` / `fireSearch.js` | Compact bilingual search interaction and deterministic filtering of browser-held records. |
 | `requestSecurity.js` | Adds the anonymous installation ID and Firebase App Check token. |
 | `cacheStorage.js` | Defensive versioned `localStorage` adapter; storage failure never makes fresh data unusable. |
 | Domain presentation modules | Convert confidence, FRP, age, severity, and identities into stable UI representations. |
@@ -66,6 +68,11 @@ During local development Vite proxies `/api` to `127.0.0.1:8000`.
 | `fire_data_validation.py` | Required schema, coordinates/time validation, normalization, deterministic deduplication, quality flags, and aggregate quality metrics. |
 | `fire_data.py` | NASA access policy, process cache, refresh coalescing, stale-if-error, and cold-start exponential backoff. |
 | `incident_clustering.py` | Haversine distance, time-aware connected components, FRP summaries, trends, and buffered convex envelopes. |
+| `incident_data.py` | Snapshot-keyed incident derivation cache and same-window single-flight coordination. |
+| `ai_search.py` | Strict provider-independent natural-language-to-filter contract. |
+| `vertex_ai_search.py` | Disabled-by-default Gemini 3.5 Flash-Lite adapter with structured output, one attempt, and a bounded timeout. |
+| `ai_search_evaluator.py` | Bilingual exact-filter, schema-validity, safe-rejection, false-accept, and latency metrics. |
+| `ai_rate_limit.py` | Fail-closed per-installation and global AI token buckets that bound paid calls across instances. |
 | `client_identity.py` | Canonical UUID validation and HMAC-SHA256 pseudonymous Firestore key generation. |
 | `firebase_security.py` | Firebase App Check verification for production callers. |
 | `rate_limit.py` | Rate-limit policy and local outage guard. |
@@ -82,7 +89,7 @@ During local development Vite proxies `/api` to `127.0.0.1:8000`.
 | Service | Data or responsibility | Persistence |
 | --- | --- | --- |
 | Browser `localStorage` | Public detection/cluster responses and anonymous installation UUID | Per browser; user-clearable |
-| Cloud Run memory | NASA frames, refresh locks, failure backoff, local limiter fallback | Per instance; ephemeral |
+| Cloud Run memory | NASA frames, derived incident snapshots, refresh/derivation locks, failure backoff, local limiter fallback | Per instance; ephemeral |
 | Firestore | HMAC-keyed shared token-bucket state (`tokens`, refill time, expiry marker) | Shared across API instances |
 | BigQuery | Deduplicated detections and hourly cluster snapshots | One-year partition retention |
 | Cloud Logging | Structured production application events | Managed retention |
@@ -112,17 +119,28 @@ one-hour process-local NASA cache before calling NASA. Expired successful data
 is retained and may be served with explicit stale headers if refresh fails.
 This favors an old but labelled map over an empty map.
 
+The derived incident cache uses the immutable process-local fire snapshot ID as
+its key. Repeated `/incidents` reads therefore reuse clustering only for the
+exact same source frame; a successful NASA refresh creates a new ID and forces
+one new derivation.
+
 ### Single-flight refresh
 
-A process lock coalesces concurrent cache misses. The first request refreshes;
-waiting requests re-check the cache after the lock and reuse its result. This
-protects NASA within one API instance but is not a distributed lock.
+A process lock per observation window coalesces concurrent cache misses. The
+first same-window request refreshes; waiting requests re-check the cache and
+reuse its result. Different windows do not block one another. This protects
+NASA within one API instance but is not a distributed lock.
 
 ### Token bucket
 
 Each browser installation has a five-token bucket refilled at one token every
 12 seconds. A Firestore transaction makes consumption atomic across Cloud Run
 instances. A wider in-memory bucket is a fail-safe when Firestore is unavailable.
+
+AI interpretation uses separate buckets: three requests per installation with
+one token restored every 20 minutes, plus a shared 60-token global bucket with
+one token restored every 24 minutes. AI fails closed if Firestore is unavailable;
+ordinary map reads retain their existing availability-first fallback.
 
 ### Boundary validation and canonicalization
 
@@ -162,11 +180,13 @@ for rate limiting is separate, HMAC-hashed before storage, and never logged.
 | `GET /fires` | App Check + client rate limit in production | `days=1..10`, optional `refresh` | Array of detection objects |
 | `GET /stats` | App Check + client rate limit in production | `days=1..10` | Count, FRP aggregates, satellite counts |
 | `GET /incidents` | App Check + client rate limit in production | `days=1..10`, optional `refresh` | `IncidentCollection` |
+| `POST /search/interpret` | App Check + client and global AI limits | JSON question, maximum 240 characters | Closed filter interpretation or safe rejection |
 | `POST /internal/ingest` | Exact Scheduler service-account OIDC token | No public body | Ingestion counts and snapshot timestamp |
 
 `POST /internal/ingest` is omitted from OpenAPI. Browser CORS allows only the
-configured localhost and Firebase origins and public `GET` calls. CORS is a
-browser policy, not an authentication mechanism.
+configured localhost and Firebase origins, with `POST` exposed solely so the
+protected search route can receive JSON. CORS is a browser policy, not an
+authentication mechanism.
 
 ### 5.2 Detection contract
 
@@ -209,6 +229,7 @@ visible individually on the map.
 | `X-Data-Stale` | Response | `true` when the API served an expired successful NASA frame |
 | `X-Data-Age-Seconds` | Response | Non-negative approximate age of the server dataset |
 | `Retry-After` | Response | Backoff for `429` and applicable temporary `503` responses |
+| `Server-Timing` | Response | Aggregate `data`, `transform`/`cluster`, and total durations; contains no identifiers or coordinates |
 
 No request body, visitor IP, raw client ID, App Check token, NASA URL, payload,
 or coordinate is part of the logging contract.
@@ -280,8 +301,9 @@ sequenceDiagram
     end
 ```
 
-Cluster reads follow the same path but call `/incidents` and then run the
-spatiotemporal derivation. They are lazy so selecting detections does not also
+Cluster reads follow the same path but call `/incidents`. The first read for a
+fire snapshot runs the spatiotemporal derivation; later reads reuse its bounded
+process-local result. They remain lazy so selecting detections does not also
 consume a second rate-limit token.
 
 ### 6.2 Manual refresh and upstream failure
@@ -320,6 +342,17 @@ sequenceDiagram
         API-->>Scheduler: Counts and snapshot hour
     end
 ```
+
+### 6.4 AI-assisted search boundary (prepared, not active)
+
+`ai_search.py` validates a short user question and accepts model output only as
+one closed JSON filter object. It rejects extra/duplicate fields, prose, SQL,
+control characters, excessive output and out-of-range values. The future Vertex
+adapter may receive only the question, fixed instruction and JSON schema; it
+will not receive detections, coordinates, visitor identifiers or credentials.
+There is currently no HTTP route and no model call has been made, so this code
+creates no cloud traffic or cost until the explicit evaluation command runs.
+The bilingual evaluation set must pass before activation.
 
 ## 7. Security, privacy, and cost controls
 
@@ -376,6 +409,8 @@ in `DEPLOYMENT.md`.
 | High-FRP threshold is a configurable heuristic | `frp_high` is a quality signal, not a scientific invalidity decision. | Validate thresholds against sensor documentation and observed distributions. |
 | Frontend validates response shape, not every scalar field | Semantically bad values could reach presentation code if backend contracts regress. | Add a lightweight runtime schema at the HTTP boundary if the API gains more producers. |
 | Browser errors are not sent to a remote collector | Client-only failures require reproduction or the displayed request ID. | Add privacy-reviewed client telemetry only if operational need outweighs data collection. |
+| Performance stages are instrumented but production baselines and budgets are not recorded | Improvements cannot yet be quantified across cold, warm, stale, and browser-cache paths. | Capture representative measurements before changing clustering or rendering algorithms. |
+| AI search has a local contract, adapter, and seed evaluation set but no route | It is not user-accessible and no live model quality or cost claim is established. | Evaluate the fixed model, approve budget/quota controls, then add the rate-limited endpoint. |
 | Production delivery is manual | Configuration drift and ordering mistakes remain possible. | Move services, IAM, budgets, Scheduler, and migrations to reviewed infrastructure-as-code. |
 
 ## 10. Architectural invariants

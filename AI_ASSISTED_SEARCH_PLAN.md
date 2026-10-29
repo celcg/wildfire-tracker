@@ -6,9 +6,30 @@ Let users ask controlled natural-language questions such as “persistent fires
 near Galicia since yesterday” while keeping the model away from SQL, arbitrary
 tools, secrets, and unrestricted data access.
 
+## Implementation status
+
+- Added a provider-independent strict filter schema and bounded question/model
+  output validation in `backend/ai_search.py`.
+- Unknown fields, duplicate JSON keys, markdown/prose, control characters,
+  excessive payloads, and out-of-range filters are rejected.
+- Added a versioned bilingual evaluation seed set covering valid filters,
+  prompt injection, and emergency-advice requests.
+- Added the official Google Gen AI SDK adapter with structured JSON output,
+  five-second timeout, one attempt, no tools, aggregate evaluation metrics, and
+  privacy-safe token accounting.
+- Replaced the retired Gemini 2.5 plan with GA `gemini-3.5-flash-lite` in the
+  `eu` multi-region. The authorized evaluation reached 90.91% exact match,
+  100% safe rejection, 100% schema validity, and zero false accepts.
+- Added a local `POST /search/interpret` contract protected by App Check, the
+  anonymous installation ID, a three-token client bucket, a shared global cost
+  bucket, a 2 KiB request guard, and fail-closed Firestore behavior.
+- Added the compact React search control and deterministic client-side filtering.
+  Vertex receives only the question, never map records or coordinates.
+- Nothing has been deployed; the feature flag remains disabled by default.
+
 ## Chosen approach
 
-Use Gemini Flash-Lite through Vertex AI as a bounded query interpreter. FastAPI
+Use Gemini 3.5 Flash-Lite through Vertex AI as a bounded query interpreter. FastAPI
 sends the question plus an explicit JSON schema; the model may return only
 supported filter fields. Existing application code validates and executes those
 filters against already-authorized wildfire data.
@@ -64,7 +85,7 @@ interpreted filters so the user can correct or clear them.
 
 ## Evaluation before release
 
-Create a versioned bilingual test set covering dates, regions, severity,
+Maintain a versioned bilingual test set covering dates, regions, severity,
 ambiguity, unsupported requests, prompt injection, malformed output, and abusive
 payloads. Measure valid-schema rate, filter accuracy, false matches, latency,
 and cost per request. Human review is required for failure categories.
