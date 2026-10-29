@@ -15,15 +15,15 @@ from rate_limit_store import FirestoreTokenBucketStore, InMemoryTokenBucketStore
 logger = get_logger("rate_limit")
 
 
-def _new_store():
+def _new_store(capacity, refill_seconds):
     store_type = (
         FirestoreTokenBucketStore
         if config.RATE_LIMIT_BACKEND == "firestore"
         else InMemoryTokenBucketStore
     )
     return store_type(
-        capacity=config.TOKEN_BUCKET_CAPACITY,
-        refill_seconds=config.TOKEN_BUCKET_REFILL_SECONDS,
+        capacity=capacity,
+        refill_seconds=refill_seconds,
         state_ttl_seconds=config.TOKEN_BUCKET_STATE_TTL_SECONDS,
     )
 
@@ -31,17 +31,36 @@ def _new_store():
 class AnonymousRateLimiter:
     """Combine a shared limiter with a wider process-local safety guard."""
 
-    def __init__(self, store=None) -> None:
-        self.store = store or _new_store()
+    def __init__(
+        self,
+        store=None,
+        *,
+        capacity=None,
+        refill_seconds=None,
+        local_guard_capacity=None,
+        local_guard_refill_seconds=None,
+        key_prefix="",
+        fail_open=True,
+    ) -> None:
+        capacity = capacity or config.TOKEN_BUCKET_CAPACITY
+        refill_seconds = refill_seconds or config.TOKEN_BUCKET_REFILL_SECONDS
+        self.store = store or _new_store(capacity, refill_seconds)
         self.local_guard = InMemoryTokenBucketStore(
-            capacity=config.LOCAL_GUARD_CAPACITY,
-            refill_seconds=config.LOCAL_GUARD_REFILL_SECONDS,
+            capacity=local_guard_capacity or config.LOCAL_GUARD_CAPACITY,
+            refill_seconds=(
+                local_guard_refill_seconds or config.LOCAL_GUARD_REFILL_SECONDS
+            ),
             state_ttl_seconds=config.TOKEN_BUCKET_STATE_TTL_SECONDS,
         )
+        self.key_prefix = key_prefix
+        self.fail_open = fail_open
 
     def enforce(self, request: Request) -> None:
         enforce_app_check(request)
-        client_key = resolve_client_key(request)
+        self.enforce_key(self.key_prefix + resolve_client_key(request))
+
+    def enforce_key(self, client_key: str) -> None:
+        """Consume a pre-sanitized key without re-reading request identity."""
         now = time()
 
         guard_decision = self.local_guard.consume(client_key, now)
@@ -59,7 +78,13 @@ class AnonymousRateLimiter:
                 "rate_limit.store_unavailable",
                 error_type=type(exc).__name__,
             )
-            return
+            if self.fail_open:
+                return
+            raise HTTPException(
+                status_code=503,
+                detail="Request protection is temporarily unavailable.",
+                headers={"Retry-After": "60"},
+            ) from None
 
         if not decision.allowed:
             self._reject(decision.retry_after, source="shared_bucket")

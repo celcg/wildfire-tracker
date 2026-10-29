@@ -7,10 +7,12 @@ from unittest.mock import patch
 
 import pandas as pd
 from fastapi import HTTPException, Request, Response
+from fastapi.testclient import TestClient
 
 import main
 import config
 import fire_data
+from ai_search import SearchQuestion
 from rate_limit import rate_limiter
 
 
@@ -375,6 +377,52 @@ class FireEndpointsTest(unittest.TestCase):
 
         # A different installation gets an independent bucket on the same IP.
         main.enforce_rate_limit(request_from(second_id, "198.51.100.1"))
+
+    @patch("main.get_vertex_search_generator")
+    def test_ai_search_returns_only_validated_filters(self, get_generator):
+        get_generator.return_value = lambda _request: (
+            '{"status":"filters","filters":{"days":3,'
+            '"layer":"clusters","sort":"persistent","limit":20}}'
+        )
+
+        result = main.interpret_fire_search(
+            SearchQuestion(question="Clusters persistentes de tres días")
+        )
+
+        self.assertEqual(result.status, "filters")
+        self.assertEqual(result.filters.days, 3)
+        self.assertEqual(result.filters.layer, "clusters")
+
+    @patch("main.get_vertex_search_generator")
+    def test_ai_search_provider_failure_is_sanitized(self, get_generator):
+        get_generator.return_value = lambda _request: (_ for _ in ()).throw(
+            RuntimeError("provider secret detail")
+        )
+
+        with self.assertRaises(HTTPException) as raised:
+            main.interpret_fire_search(SearchQuestion(question="Fires today"))
+
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertNotIn("provider secret", raised.exception.detail)
+
+    def test_ai_search_body_is_bounded_before_json_parsing(self):
+        oversized = b"x" * (config.AI_SEARCH_MAX_REQUEST_BYTES + 1)
+
+        response = TestClient(main.app).post(
+            "/search/interpret",
+            content=oversized,
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "http://localhost:5173",
+            },
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.json(), {"detail": "Search request is too large."})
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "http://localhost:5173",
+        )
 
 
 if __name__ == "__main__":
