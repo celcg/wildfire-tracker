@@ -86,6 +86,22 @@ class FireDataValidationTest(unittest.TestCase):
         self.assertEqual(quality.invalid_satellites, 1)
         self.assertEqual(quality.dropped_rows, 4)
 
+    def test_excludes_morocco_and_france_from_iberian_results(self):
+        source = pd.DataFrame(
+            [
+                fire(latitude=40.4, longitude=-3.7),  # Madrid
+                fire(latitude=41.15, longitude=-8.61),  # Porto
+                fire(latitude=35.76, longitude=-5.83),  # Tangier
+                fire(latitude=43.6, longitude=1.44),  # Toulouse
+                fire(latitude=42.7, longitude=2.9),  # Perpignan
+            ]
+        )
+
+        result, quality = normalize_fire_data(source, days=1, now=NOW)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(quality.invalid_coordinates, 3)
+
     def test_uses_a_rolling_window_across_utc_midnight(self):
         shortly_after_midnight = datetime(
             2026,

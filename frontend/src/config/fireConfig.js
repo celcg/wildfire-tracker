@@ -18,8 +18,8 @@ export const BROWSER_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 
 // The namespace is versioned deliberately. A future cache schema can be released
 // without trying to migrate incompatible values already stored in user browsers.
-export const FIRE_CACHE_NAMESPACE = "wildfire-fires-v1";
-export const INCIDENT_CACHE_NAMESPACE = "wildfire-incidents-v2";
+export const FIRE_CACHE_NAMESPACE = "wildfire-fires-v2";
+export const INCIDENT_CACHE_NAMESPACE = "wildfire-incidents-v3";
 
 export const MAP_LAYERS = [
   { id: "detections", label: "Detections" },
@@ -50,8 +50,11 @@ export const INCIDENT_SEVERITY_LEVELS = [
 ];
 
 export const MAP_CONFIG = {
-  center: [40.4, -3.7],
-  zoom: 5,
+  initialBounds: [
+    [36, -10],
+    [44, 4.5],
+  ],
+  minZoom: 4,
   tileUrl: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   attribution: "&copy; OpenStreetMap contributors",
 };

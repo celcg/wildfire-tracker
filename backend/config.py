@@ -20,6 +20,26 @@ ALLOWED_ORIGINS = [
 
 NASA_DATASET = "VIIRS_NOAA20_NRT"
 IBERIAN_BOUNDS = "-10,35,5,44"
+# The FIRMS area endpoint only accepts a rectangle. This mainland outline
+# removes detections north of the Pyrenees and south of the Strait of Gibraltar.
+IBERIAN_MAINLAND_POLYGON = (
+    (36.0, -9.0),
+    (36.0, -5.3),
+    (36.7, -2.0),
+    (38.7, 0.0),
+    (41.4, 2.4),
+    (42.43, 3.2),
+    (42.55, 2.2),
+    (42.7, 1.7),
+    (42.85, 0.7),
+    (42.75, 0.0),
+    (43.1, -0.7),
+    (43.4, -1.8),
+    (43.75, -5.0),
+    (43.8, -8.0),
+    (42.0, -9.3),
+    (37.0, -9.5),
+)
 FIRE_COLUMNS = [
     "latitude",
     "longitude",

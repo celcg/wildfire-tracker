@@ -30,8 +30,20 @@ vi.mock("react-leaflet", async () => {
   });
   return {
     CircleMarker: Layer,
-    MapContainer: ({ children, className, tabIndex }) => (
-      <div className={className} tabIndex={tabIndex}>
+    MapContainer: ({
+      bounds,
+      children,
+      className,
+      minZoom,
+      tabIndex,
+    }) => (
+      <div
+        className={className}
+        data-bounds={JSON.stringify(bounds)}
+        data-min-zoom={minZoom}
+        data-testid="fire-map"
+        tabIndex={tabIndex}
+      >
         {children}
       </div>
     ),
@@ -115,4 +127,12 @@ test("map selection updates the list and Escape restores row focus", async () =>
     { key: "Escape" },
   );
   expect(selectedButton).toHaveFocus();
+});
+
+test("map opens on the whole peninsula and allows a wider zoom", () => {
+  render(<Harness />);
+
+  const map = screen.getByTestId("fire-map");
+  expect(map).toHaveAttribute("data-bounds", "[[36,-10],[44,4.5]]");
+  expect(map).toHaveAttribute("data-min-zoom", "4");
 });

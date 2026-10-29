@@ -387,8 +387,8 @@ export function FireMap({
         ) : null}
         <MapContainer
           className="fire-map"
-          center={MAP_CONFIG.center}
-          zoom={MAP_CONFIG.zoom}
+          bounds={MAP_CONFIG.initialBounds}
+          minZoom={MAP_CONFIG.minZoom}
           scrollWheelZoom
           tabIndex={0}
         >

@@ -110,6 +110,31 @@ def _configured_bounds() -> tuple[float, float, float, float]:
     return west, south, east, north
 
 
+def _is_in_iberian_mainland(latitude: float, longitude: float) -> bool:
+    """Return whether a coordinate falls inside the configured mainland outline."""
+    inside = False
+    previous_latitude, previous_longitude = config.IBERIAN_MAINLAND_POLYGON[-1]
+
+    for current_latitude, current_longitude in config.IBERIAN_MAINLAND_POLYGON:
+        crosses_latitude = (current_latitude > latitude) != (
+            previous_latitude > latitude
+        )
+        if crosses_latitude:
+            boundary_longitude = current_longitude + (
+                (previous_longitude - current_longitude)
+                * (latitude - current_latitude)
+                / (previous_latitude - current_latitude)
+            )
+            if longitude < boundary_longitude:
+                inside = not inside
+        previous_latitude, previous_longitude = (
+            current_latitude,
+            current_longitude,
+        )
+
+    return inside
+
+
 def normalize_fire_data(
     fires: pd.DataFrame,
     days: int,
@@ -141,6 +166,8 @@ def normalize_fire_data(
                 raise ValueError("Coordinates outside Earth")
             if not (south <= latitude <= north and west <= longitude <= east):
                 raise ValueError("Coordinates outside requested bounds")
+            if not _is_in_iberian_mainland(latitude, longitude):
+                raise ValueError("Coordinates outside the Iberian mainland")
         except (TypeError, ValueError):
             issue_counts["invalid_coordinates"] += 1
             continue
