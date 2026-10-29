@@ -4,6 +4,8 @@ from unittest.mock import patch
 import pandas as pd
 
 import main
+from fire_data import FIRE_SNAPSHOT_ATTR
+from incident_data import clear_incident_cache, derive_incidents
 from incident_clustering import cluster_fires, haversine_km
 
 
@@ -28,6 +30,9 @@ def fire(
 
 
 class IncidentClusteringTest(unittest.TestCase):
+    def setUp(self):
+        clear_incident_cache()
+
     def test_haversine_distance_is_geographically_plausible(self):
         # Madrid to Toledo is approximately 67 km in a straight line.
         distance = haversine_km(40.4168, -3.7038, 39.8628, -4.0273)
@@ -195,6 +200,32 @@ class IncidentClusteringTest(unittest.TestCase):
         main.incidents(days=1, refresh=True)
 
         fetch_fires.assert_called_once_with(1, force_refresh=True)
+
+    def test_incident_derivation_is_reused_for_the_same_fire_snapshot(self):
+        fires = pd.DataFrame(
+            [fire(42.100, -8.600, "2026-09-10", 900, 5)]
+        )
+        fires.attrs[FIRE_SNAPSHOT_ATTR] = 17
+
+        with patch("incident_data.cluster_fires", wraps=cluster_fires) as derive:
+            first = derive_incidents(fires, days=1)
+            second = derive_incidents(fires.copy(), days=1)
+
+        self.assertIs(first, second)
+        derive.assert_called_once()
+
+    def test_new_fire_snapshot_replaces_the_cached_derivation(self):
+        fires = pd.DataFrame(
+            [fire(42.100, -8.600, "2026-09-10", 900, 5)]
+        )
+
+        with patch("incident_data.cluster_fires", wraps=cluster_fires) as derive:
+            fires.attrs[FIRE_SNAPSHOT_ATTR] = 17
+            derive_incidents(fires, days=1)
+            fires.attrs[FIRE_SNAPSHOT_ATTR] = 18
+            derive_incidents(fires, days=1)
+
+        self.assertEqual(derive.call_count, 2)
 
 
 if __name__ == "__main__":

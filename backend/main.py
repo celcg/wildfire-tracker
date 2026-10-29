@@ -17,7 +17,7 @@ from fire_data import (
     fetch_fires,
     summarize_fires,
 )
-from incident_clustering import cluster_fires
+from incident_data import derive_incidents
 from historical_ingest import IngestionResult, ingest_fire_history
 from logging_config import (
     REQUEST_ID_HEADER,
@@ -33,6 +33,20 @@ from scheduler_auth import enforce_scheduler_auth
 
 
 logger = get_logger("http")
+
+
+def _append_server_timing(
+    response: Response | None,
+    metric: str,
+    started_at: float,
+) -> None:
+    """Expose aggregate stage timing without visitor or fire-location data."""
+    if response is None:
+        return
+    duration_ms = round((perf_counter() - started_at) * 1000, 2)
+    previous = response.headers.get("Server-Timing")
+    value = f"{metric};dur={duration_ms}"
+    response.headers["Server-Timing"] = f"{previous}, {value}" if previous else value
 
 
 def _resolve_request_id(candidate: str | None) -> str:
@@ -76,6 +90,7 @@ async def log_http_request(request: Request, call_next):
 
     try:
         response = await call_next(request)
+        _append_server_timing(response, "total", started_at)
         response.headers[REQUEST_ID_HEADER] = request_id
         level = logging.WARNING if response.status_code >= 400 else logging.INFO
         if response.status_code >= 500:
@@ -127,11 +142,16 @@ def fires(
     response: Response = None,
 ) -> list[dict]:
     """Return recent detections for a validated observation window."""
+    data_started_at = perf_counter()
     fire_frame = fetch_fires(days, force_refresh=refresh)
+    _append_server_timing(response, "data", data_started_at)
     _set_data_freshness_headers(response, fire_frame)
     # Validation may attach internal quality metadata for historical ingestion;
     # public reads retain the established detection shape.
-    return fire_frame[FIRE_COLUMNS].to_dict(orient="records")
+    transform_started_at = perf_counter()
+    records = fire_frame[FIRE_COLUMNS].to_dict(orient="records")
+    _append_server_timing(response, "transform", transform_started_at)
+    return records
 
 
 def stats(
@@ -139,9 +159,14 @@ def stats(
     response: Response = None,
 ) -> dict:
     """Return a compact aggregate without duplicating data-access logic."""
+    data_started_at = perf_counter()
     fire_frame = fetch_fires(days)
+    _append_server_timing(response, "data", data_started_at)
     _set_data_freshness_headers(response, fire_frame)
-    return summarize_fires(fire_frame, days)
+    transform_started_at = perf_counter()
+    summary = summarize_fires(fire_frame, days)
+    _append_server_timing(response, "transform", transform_started_at)
+    return summary
 
 
 def incidents(
@@ -150,9 +175,14 @@ def incidents(
     response: Response = None,
 ) -> IncidentCollection:
     """Group detections into explainable possible fire areas."""
+    data_started_at = perf_counter()
     fire_frame = fetch_fires(days, force_refresh=refresh)
+    _append_server_timing(response, "data", data_started_at)
     _set_data_freshness_headers(response, fire_frame)
-    return cluster_fires(fire_frame, days)
+    derivation_started_at = perf_counter()
+    collection = derive_incidents(fire_frame, days)
+    _append_server_timing(response, "cluster", derivation_started_at)
+    return collection
 
 
 def ingest_history() -> IngestionResult:
@@ -186,6 +216,7 @@ def create_app() -> FastAPI:
             "X-Data-Stale",
             "X-Data-Age-Seconds",
             REQUEST_ID_HEADER,
+            "Server-Timing",
         ],
     )
     application.middleware("http")(log_http_request)

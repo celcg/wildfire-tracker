@@ -17,9 +17,11 @@ from nasa_client import fetch_nasa_csv
 # A lock makes the cache safe when FastAPI serves synchronous routes in threads.
 _fire_cache: dict[int, tuple[float, pd.DataFrame]] = {}
 _fire_cache_lock = Lock()
-# Cache checks alone cannot prevent a burst of simultaneous misses. This lock
-# coalesces those misses so only the first request reaches NASA.
-_nasa_fetch_lock = Lock()
+# Cache checks alone cannot prevent a burst of simultaneous misses. Per-window
+# locks coalesce the same request while allowing independent day windows to load
+# concurrently instead of waiting behind one global lock.
+_nasa_fetch_locks: dict[int, Lock] = {}
+_nasa_fetch_locks_guard = Lock()
 _last_nasa_attempt: dict[int, float] = {}
 
 
@@ -30,19 +32,27 @@ class NasaFailureBackoff:
 
 
 _nasa_failure_backoff: dict[int, NasaFailureBackoff] = {}
+_snapshot_sequence = 0
 
 DATA_STALE_ATTR = "data_stale"
 DATA_AGE_SECONDS_ATTR = "data_age_seconds"
+FIRE_SNAPSHOT_ATTR = "fire_snapshot_id"
 logger = get_logger("fire_data")
 
 
 def clear_fire_cache() -> None:
     """Reset process-local data; primarily useful for isolated tests."""
-    with _nasa_fetch_lock:
+    with _nasa_fetch_locks_guard:
         with _fire_cache_lock:
             _fire_cache.clear()
         _last_nasa_attempt.clear()
         _nasa_failure_backoff.clear()
+        _nasa_fetch_locks.clear()
+
+
+def _get_nasa_fetch_lock(days: int) -> Lock:
+    with _nasa_fetch_locks_guard:
+        return _nasa_fetch_locks.setdefault(days, Lock())
 
 
 def _with_cache_metadata(
@@ -71,9 +81,18 @@ def _get_cached_fires(days: int, now: float) -> pd.DataFrame | None:
         return _with_cache_metadata(fires, age_seconds, is_stale)
 
 
-def _store_fires(days: int, fires: pd.DataFrame, cached_at: float) -> None:
+def _store_fires(days: int, fires: pd.DataFrame, cached_at: float) -> pd.DataFrame:
+    global _snapshot_sequence
+
     with _fire_cache_lock:
-        _fire_cache[days] = (cached_at, fires.copy())
+        # The snapshot identifier is process-local and intentionally contains no
+        # detection data. Derived caches can use it without hashing coordinates
+        # or retaining stale cluster results after a successful NASA refresh.
+        _snapshot_sequence += 1
+        cached_copy = fires.copy()
+        cached_copy.attrs[FIRE_SNAPSHOT_ATTR] = _snapshot_sequence
+        _fire_cache[days] = (cached_at, cached_copy)
+        return cached_copy
 
 
 def _is_fresh(fires: pd.DataFrame | None) -> bool:
@@ -142,7 +161,7 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
 
     # Recheck after acquiring the lock: another request may have populated the
     # cache while this request was waiting.
-    with _nasa_fetch_lock:
+    with _get_nasa_fetch_lock(days):
         now = monotonic()
         cached_fires = _get_cached_fires(days, now)
         if _is_fresh(cached_fires):
@@ -240,7 +259,7 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
                 headers={"Retry-After": str(retry_after)},
             ) from exc
 
-        _store_fires(days, fires, now)
+        cached_fires = _store_fires(days, fires, now)
         _nasa_failure_backoff.pop(days, None)
         log_event(
             logger,
@@ -251,7 +270,7 @@ def fetch_fires(days: int, force_refresh: bool = False) -> pd.DataFrame:
             row_count=len(fires),
             **quality.log_fields(),
         )
-        return _with_cache_metadata(fires, age_seconds=0, is_stale=False)
+        return _with_cache_metadata(cached_fires, age_seconds=0, is_stale=False)
 
 
 def summarize_fires(fires: pd.DataFrame, days: int) -> dict:

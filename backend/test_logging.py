@@ -197,6 +197,7 @@ class CorsLoggingContractTest(unittest.TestCase):
 
         self.assertIn(REQUEST_ID_HEADER, cors_middleware.kwargs["allow_headers"])
         self.assertIn(REQUEST_ID_HEADER, cors_middleware.kwargs["expose_headers"])
+        self.assertIn("Server-Timing", cors_middleware.kwargs["expose_headers"])
         self.assertIn("X-Client-ID", cors_middleware.kwargs["allow_headers"])
         self.assertIn(
             "X-Firebase-AppCheck",

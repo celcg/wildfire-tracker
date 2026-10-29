@@ -1,6 +1,7 @@
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from threading import Barrier
 from time import sleep
 from unittest.mock import patch
 
@@ -142,6 +143,11 @@ class FireEndpointsTest(unittest.TestCase):
         self.assertIn("cache.miss", events)
         self.assertIn("nasa.fetch_succeeded", events)
         self.assertIn("cache.hit", events)
+        self.assertIsInstance(first.attrs[fire_data.FIRE_SNAPSHOT_ATTR], int)
+        self.assertEqual(
+            first.attrs[fire_data.FIRE_SNAPSHOT_ATTR],
+            second.attrs[fire_data.FIRE_SNAPSHOT_ATTR],
+        )
 
     def test_manual_refresh_respects_nasa_refresh_interval(self):
         with patch.object(config, "NASA_KEY", "test-key"):
@@ -176,6 +182,29 @@ class FireEndpointsTest(unittest.TestCase):
                     )
 
         fetch_nasa_csv.assert_called_once()
+        self.assertTrue(all(len(result) == len(SAMPLE_FIRES) for result in results))
+
+    def test_different_day_windows_do_not_share_one_refresh_lock(self):
+        both_requests_started = Barrier(2)
+
+        def synchronized_response(_url):
+            both_requests_started.wait(timeout=1)
+            return SAMPLE_FIRES
+
+        with patch.object(config, "NASA_KEY", "test-key"):
+            with patch(
+                "fire_data.fetch_nasa_csv",
+                side_effect=synchronized_response,
+            ) as fetch_nasa_csv:
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    results = list(
+                        executor.map(
+                            lambda days: fire_data.fetch_fires(days=days),
+                            (1, 3),
+                        )
+                    )
+
+        self.assertEqual(fetch_nasa_csv.call_count, 2)
         self.assertTrue(all(len(result) == len(SAMPLE_FIRES) for result in results))
 
     def test_nasa_data_can_refresh_after_one_hour(self):
