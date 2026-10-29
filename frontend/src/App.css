@@ -17,6 +17,16 @@
 }
 
 .skip-link:focus { transform: translateY(0); }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* The header identifies the tool without delaying the map. */
 .app-header {
@@ -212,6 +222,74 @@
 .refresh-button.is-loading svg { animation: rotate 1.1s linear infinite; }
 button:disabled,
 select:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.fire-search {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.65fr) minmax(420px, 1.35fr);
+  gap: 10px 24px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(18, 11, 8, 0.76);
+}
+.fire-search-copy h2 { margin: 0; font-size: 0.96rem; letter-spacing: -0.01em; }
+.fire-search-copy p { max-width: 56ch; margin: 3px 0 0; color: var(--ink-muted); font-size: 0.75rem; line-height: 1.4; }
+.fire-search-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.fire-search-form input {
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--ink);
+  caret-color: var(--focus);
+  background: var(--surface-raised);
+}
+.fire-search-form input::placeholder { color: color-mix(in srgb, var(--ink-muted), transparent 15%); }
+.fire-search-form button,
+.fire-search-filters button {
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface-cool);
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+.fire-search-form button { display: inline-flex; gap: 8px; align-items: center; padding: 9px 14px; }
+.fire-search-form button svg { width: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.8; }
+.fire-search-form button:hover:not(:disabled),
+.fire-search-filters button:hover { transform: translateY(-1px); border-color: var(--focus); background: rgba(255, 148, 24, 0.1); }
+.fire-search-form input:focus-visible,
+.fire-search-form button:focus-visible,
+.fire-search-filters button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.fire-search-filters {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+.fire-search-filters span {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 148, 24, 0.28);
+  border-radius: 8px;
+  color: #ffe7c5;
+  background: rgba(255, 148, 24, 0.07);
+  font-size: 0.72rem;
+}
+.fire-search-filters button { min-height: 30px; margin-left: auto; padding: 4px 9px; font-size: 0.72rem; }
+.fire-search-status { grid-column: 1 / -1; margin: 1px 0 0; font-size: 0.76rem; line-height: 1.4; }
+.fire-search-status.is-success { color: #ffd49c; }
+.fire-search-status.is-warning { color: #ffd166; }
+.fire-search-status.is-error { color: #ffb09b; }
 
 .refresh-button:focus-visible,
 .layer-switch button:focus-visible,
@@ -548,6 +626,7 @@ h2 {
   .app-header { grid-template-columns: 1fr auto; }
   .header-description { grid-column: 1 / -1; grid-row: 2; }
   .observation-toolbar { grid-template-columns: 1fr 1.3fr; }
+  .fire-search { grid-template-columns: 1fr; }
   .control-field,
   .layer-switch { border-bottom: 1px solid var(--line); }
   .layer-switch { border-right: 0; }
@@ -572,6 +651,10 @@ h2 {
   .layer-switch,
   .data-readout { border-right: 0; border-bottom: 1px solid var(--line); }
   .refresh-button { min-height: 46px; }
+  .fire-search { padding: 13px; }
+  .fire-search-form { grid-template-columns: 1fr; }
+  .fire-search-form button { justify-content: center; }
+  .fire-search-filters button { width: 100%; margin-left: 0; }
   .incident-summary dl { grid-template-columns: repeat(2, 1fr); }
   .incident-summary dl div:nth-child(2) { border-right: 0; }
   .incident-summary dl div:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
@@ -602,6 +685,8 @@ h2 {
 
 @media (forced-colors: active) {
   .refresh-button,
+  .fire-search-form button,
+  .fire-search-filters button,
   .layer-switch button.is-active,
   .result-heading button[aria-pressed="true"],
   .return-to-result,

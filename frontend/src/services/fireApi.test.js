@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   classifyNetworkError,
   fetchFires,
+  interpretFireSearch,
   parseRetryAfter,
   sanitizeRequestId,
 } from "./fireApi.js";
@@ -31,6 +32,21 @@ test("returns stale-data metadata exposed by the API", async () => {
   assert.equal(result.freshness.isStale, true);
   assert.equal(result.freshness.sourceUpdatedAt, 20_000 - 7_200_000);
   assert.equal(result.data.length, 1);
+});
+
+test("returns privacy-safe request stage timings", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify([]), {
+      headers: { "Server-Timing": "data;dur=1.2, total;dur=2.4" },
+    });
+
+  const result = await fetchFires({ days: "1", forceRefresh: false });
+
+  assert.equal(result.timings.serverTiming, "data;dur=1.2, total;dur=2.4");
+  assert.equal(typeof result.timings.securityMs, "number");
+  assert.equal(typeof result.timings.networkMs, "number");
+  assert.equal(typeof result.timings.bodyMs, "number");
+  assert.equal(typeof result.timings.totalMs, "number");
 });
 
 test("sends a unique request ID and keeps the ID returned by the API", async () => {
@@ -133,4 +149,30 @@ test("parses HTTP-date retry values and rejects unsafe request IDs", () => {
     10,
   );
   assert.equal(sanitizeRequestId("upstream said: secret"), null);
+});
+
+test("sends AI questions only in a protected JSON POST", async () => {
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return new Response(
+      JSON.stringify({
+        status: "filters",
+        filters: { days: 3, layer: "clusters", sort: "persistent", limit: 20 },
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  const result = await interpretFireSearch({
+    question: "Clusters persistentes de tres días",
+  });
+
+  assert.match(request.url, /\/search\/interpret$/);
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["Content-Type"], "application/json");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    question: "Clusters persistentes de tres días",
+  });
+  assert.equal(result.data.filters.days, 3);
 });

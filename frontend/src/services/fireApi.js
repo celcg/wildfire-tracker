@@ -53,22 +53,43 @@ function readFreshness(response) {
   };
 }
 
-async function requestJson({ path, signal }) {
+function clockNow() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
+
+function elapsedSince(startedAt) {
+  return Math.round((clockNow() - startedAt) * 100) / 100;
+}
+
+async function requestJson({ path, signal, method = "GET", body }) {
   // A per-request identifier lets Cloud Logging connect a UI failure with the
   // exact API and NASA/cache events that produced it.
   const clientRequestId = globalThis.crypto.randomUUID();
+  const requestStartedAt = clockNow();
   let response;
+  let securityMs;
+  let networkMs;
 
   try {
+    const securityStartedAt = clockNow();
     const securityHeaders = await buildRequestSecurityHeaders();
-    response = await fetch(API_URL + path, {
-      headers: {
+    securityMs = elapsedSince(securityStartedAt);
+    const networkStartedAt = clockNow();
+    const headers = {
         Accept: "application/json",
         [REQUEST_ID_HEADER]: clientRequestId,
         ...securityHeaders,
-      },
+    };
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+    response = await fetch(API_URL + path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal,
     });
+    networkMs = elapsedSince(networkStartedAt);
   } catch (error) {
     if (error?.name === "AbortError") {
       throw error;
@@ -88,10 +109,23 @@ async function requestJson({ path, signal }) {
   }
 
   try {
+    const parsingStartedAt = clockNow();
+    const data = await response.json();
     return {
-      data: await response.json(),
+      data,
       freshness: readFreshness(response),
       requestId,
+      // Kept in memory for profiling and tests; timings are not logged and do
+      // not contain client IDs, questions, coordinates, or response payloads.
+      timings: {
+        securityMs,
+        networkMs,
+        // response.json() includes downloading the body and parsing it; keeping
+        // one honest metric avoids duplicating the payload just to split both.
+        bodyMs: elapsedSince(parsingStartedAt),
+        totalMs: elapsedSince(requestStartedAt),
+        serverTiming: response.headers.get("Server-Timing"),
+      },
     };
   } catch {
     throw new FireApiError("malformed", { requestId });
@@ -145,5 +179,26 @@ export async function fetchIncidents({ days, forceRefresh, signal }) {
     throw new FireApiError("malformed", { requestId: result.requestId });
   }
 
+  return result;
+}
+
+export async function interpretFireSearch({ question, signal }) {
+  const result = await requestJson({
+    path: "/search/interpret",
+    method: "POST",
+    body: { question },
+    signal,
+  });
+  const validStatus = ["filters", "unsupported", "emergency_advice"].includes(
+    result.data?.status,
+  );
+  const hasExpectedFilters =
+    result.data?.status === "filters"
+      ? result.data.filters && typeof result.data.filters === "object"
+      : result.data?.filters == null;
+
+  if (!validStatus || !hasExpectedFilters) {
+    throw new FireApiError("malformed", { requestId: result.requestId });
+  }
   return result;
 }
