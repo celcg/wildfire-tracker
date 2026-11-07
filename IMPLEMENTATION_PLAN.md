@@ -66,6 +66,18 @@ the final change summary.
 
 ## Current Focus
 
+**Prepared but inactive: durable public-detection snapshots.**
+
+`backend/published_fires.py` now contains a local-file prototype for an external
+periodic caller: accept a fresh normalized 1–10 day frame, write immutable JSON,
+atomically switch its pointer, report freshness, and retain the previous usable
+publication on acquisition failure. `test_published_fires.py` verifies fallback,
+expiry, stale-source rejection, and checksum detection. No route, scheduler,
+configuration flag, or production storage is connected. Before activation:
+choose persistent storage (Cloud Run's filesystem is ephemeral), a periodic
+trigger, reader integration, retention and monitoring; validate with the user
+and follow the direct deployment authorization gate.
+
 **Active task: bounded AI-assisted search and measured request performance.**
 
 The live Gemini 3.5 Flash-Lite evaluation passed the release thresholds with
@@ -989,3 +1001,4 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-28 | Refined the restored identity: enlarged the original flame with heat rings, removed the unclear Methodology header link, made Privacy open and focus its disclosure, and replaced the refresh gradient with solid ember. |
 | 2026-10-28 | Polished the dark fire identity with a layered thermal-night background and a three-level button hierarchy: coral primary, warm selected layer, and raised dark secondary actions. |
 | 2026-10-10 | Added RISK_TECHNOLOGY_AND_DEPLOYMENT_PLAN.md with repository-pinned runtimes/libraries, proposed ML/geospatial dependencies, local CLI/API/UI steps, inference container preparation and separate historical-demo/daily-operation deployments. Recorded Google Cloud reuse, proxy integration, Storage regional cost caveat, staged authorization and rollback; no installation or deployment performed. |
+| 2026-11-07 | Added an inactive local-file snapshot publisher for current detections, with atomic pointer publication, age states and failure fallback. Production storage, scheduling and public route integration remain explicit later tasks; no deployment. |
