@@ -68,7 +68,14 @@ const fire = {
 function Harness() {
   const [selectedKey, setSelectedKey] = useState(null);
   const [focusRequest, setFocusRequest] = useState(0);
+  const [mapNavigationRequest, setMapNavigationRequest] = useState(0);
+  const mapFocusRef = useRef(null);
   const selectedResultRef = useRef(null);
+  const showOnMap = (key) => {
+    setSelectedKey(key);
+    setMapNavigationRequest((request) => request + 1);
+    mapFocusRef.current?.focus();
+  };
   return (
     <>
       <FireMap
@@ -77,6 +84,8 @@ function Harness() {
         incidents={[]}
         layer="detections"
         loading={false}
+        mapFocusRef={mapFocusRef}
+        mapNavigationRequest={mapNavigationRequest}
         onReturnToResult={() => setFocusRequest((request) => request + 1)}
         onSelect={setSelectedKey}
         observationWindow="Last 24 hours"
@@ -87,7 +96,7 @@ function Harness() {
         focusRequest={focusRequest}
         incidents={[]}
         layer="detections"
-        onSelect={setSelectedKey}
+        onShowOnMap={showOnMap}
         selectedKey={selectedKey}
         selectedResultRef={selectedResultRef}
       />
@@ -95,7 +104,7 @@ function Harness() {
   );
 }
 
-test("list selection moves the map and the return action restores row focus", async () => {
+test("show on map can navigate repeatedly without clearing the selection", async () => {
   const user = userEvent.setup();
   render(<Harness />);
 
@@ -105,11 +114,20 @@ test("list selection moves the map and the return action restores row focus", as
       duration: 0.55,
     }),
   );
-
-  await user.click(
-    screen.getByRole("button", { name: "Return to selected record" }),
+  const mapRegion = screen.getByLabelText(
+    "Map of satellite thermal detections",
   );
-  expect(screen.getByRole("button", { name: "Selected on map" })).toHaveFocus();
+  expect(mapRegion).toHaveFocus();
+
+  fireEvent.keyDown(mapRegion, { key: "Escape" });
+  const selectedButton = screen.getByRole("button", {
+    name: "Show on map again",
+  });
+  expect(selectedButton).toHaveFocus();
+
+  await user.click(selectedButton);
+  expect(mapRegion).toHaveFocus();
+  expect(mapMocks.flyTo).toHaveBeenCalledTimes(2);
 });
 
 test("map selection updates the list and Escape restores row focus", async () => {
@@ -118,7 +136,7 @@ test("map selection updates the list and Escape restores row focus", async () =>
 
   await user.click(screen.getByRole("button", { name: "map result" }));
   const selectedButton = screen.getByRole("button", {
-    name: "Selected on map",
+    name: "Show on map again",
   });
   expect(selectedButton).toHaveAttribute("aria-pressed", "true");
 
@@ -127,6 +145,11 @@ test("map selection updates the list and Escape restores row focus", async () =>
     { key: "Escape" },
   );
   expect(selectedButton).toHaveFocus();
+
+  fireEvent.keyDown(selectedButton, { key: "Escape" });
+  expect(
+    screen.getByLabelText("Map of satellite thermal detections"),
+  ).toHaveFocus();
 });
 
 test("map opens on the whole peninsula and allows a wider zoom", () => {

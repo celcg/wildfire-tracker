@@ -329,6 +329,7 @@ h2 {
   font-weight: 650;
 }
 .source-badge span { width: 7px; height: 7px; border-radius: 50%; background: var(--ember); }
+.map-frame:focus-visible { outline: 3px solid var(--focus); outline-offset: 5px; }
 .map-instructions { max-width: 75ch; margin: 0 0 10px; color: var(--ink-muted); font-size: 0.8rem; }
 .map-frame {
   position: relative;

@@ -40,13 +40,13 @@ function createFires(count) {
 
 test("exposes every detection popup field and selects it by keyboard", async () => {
   const user = userEvent.setup();
-  const onSelect = vi.fn();
+  const onShowOnMap = vi.fn();
   render(
     <DataExplorer
       fires={[fire]}
       incidents={[]}
       layer="detections"
-      onSelect={onSelect}
+      onShowOnMap={onShowOnMap}
       selectedKey={null}
       selectedResultRef={createRef()}
     />,
@@ -61,7 +61,7 @@ test("exposes every detection popup field and selects it by keyboard", async () 
   await user.tab();
   expect(screen.getByRole("button", { name: "Show on map" })).toHaveFocus();
   await user.keyboard("{Enter}");
-  expect(onSelect).toHaveBeenCalledOnce();
+  expect(onShowOnMap).toHaveBeenCalledOnce();
 });
 
 test("exposes cluster persistence, trend, satellites, and location", () => {
@@ -70,7 +70,7 @@ test("exposes cluster persistence, trend, satellites, and location", () => {
       fires={[]}
       incidents={[incident]}
       layer="clusters"
-      onSelect={() => {}}
+      onShowOnMap={() => {}}
       selectedKey="incident-example"
       selectedResultRef={createRef()}
     />,
@@ -79,7 +79,7 @@ test("exposes cluster persistence, trend, satellites, and location", () => {
   expect(screen.getByText("Single observation")).toBeVisible();
   expect(screen.getByText("Stable")).toBeVisible();
   expect(screen.getByText("NOAA-20")).toBeVisible();
-  expect(screen.getByRole("button", { name: "Selected on map" })).toHaveAttribute(
+  expect(screen.getByRole("button", { name: "Show on map again" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -159,7 +159,7 @@ test("primary loading, error, and result states have no axe violations", async (
         fires={[fire]}
         incidents={[]}
         layer="detections"
-        onSelect={() => {}}
+        onShowOnMap={() => {}}
         selectedKey={null}
         selectedResultRef={createRef()}
       />

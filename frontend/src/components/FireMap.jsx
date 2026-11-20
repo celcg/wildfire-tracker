@@ -186,7 +186,11 @@ const IncidentAreas = memo(function IncidentAreas({
     });
 });
 
-function MapSelectionController({ selectedResult, layerInstances }) {
+function MapSelectionController({
+  selectedResult,
+  layerInstances,
+  navigationRequest,
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -200,7 +204,7 @@ function MapSelectionController({ selectedResult, layerInstances }) {
       { duration: 0.55 },
     );
     layerInstances.current.get(selectedResult.key)?.openPopup();
-  }, [layerInstances, map, selectedResult]);
+  }, [layerInstances, map, navigationRequest, selectedResult]);
 
   return null;
 }
@@ -253,6 +257,8 @@ export function FireMap({
   incidents,
   layer,
   loading,
+  mapFocusRef,
+  mapNavigationRequest,
   onReturnToResult,
   onSelect,
   observationWindow,
@@ -354,7 +360,8 @@ export function FireMap({
 
       <p className="map-instructions" id="map-instructions">
         Use the zoom controls or arrow keys to explore. Select a record below to
-        locate it here. Press Escape to return to the selected record.
+        locate it here. Press Escape to switch between the map and the selected
+        record.
       </p>
 
       <div
@@ -366,7 +373,9 @@ export function FireMap({
             : "Map of satellite thermal detections"
         }
         onKeyDown={handleMapKeyDown}
+        ref={mapFocusRef}
         role="region"
+        tabIndex={-1}
       >
         {loading ? (
           <MapStatus
@@ -394,6 +403,7 @@ export function FireMap({
         >
           <MapSelectionController
             layerInstances={layerInstances}
+            navigationRequest={mapNavigationRequest}
             selectedResult={selectedResult}
           />
           <TileLayer
