@@ -129,16 +129,16 @@ test("opens the page that contains a map-selected record", async () => {
   );
 
   expect(
-    await screen.findByRole("button", { name: "Selected on map" }),
+    await screen.findByRole("button", { name: "Show on map again" }),
   ).toBeVisible();
   expect(screen.getByText("Showing 21–30 of 30")).toBeVisible();
 
   await user.click(screen.getByRole("button", { name: "Previous" }));
-  expect(screen.queryByRole("button", { name: "Selected on map" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Show on map again" })).toBeNull();
 
   rerender(<DataExplorer {...props} focusRequest={1} />);
   expect(
-    await screen.findByRole("button", { name: "Selected on map" }),
+    await screen.findByRole("button", { name: "Show on map again" }),
   ).toHaveFocus();
 });
 

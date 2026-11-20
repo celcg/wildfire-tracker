@@ -28,6 +28,7 @@ vi.mock("react-leaflet", async () => {
       </button>
     );
   });
+  const map = { flyTo: mapMocks.flyTo, getZoom: mapMocks.getZoom };
   return {
     CircleMarker: Layer,
     MapContainer: ({
@@ -51,7 +52,7 @@ vi.mock("react-leaflet", async () => {
     Popup: ({ children }) => <div>{children}</div>,
     TileLayer: () => null,
     Tooltip: ({ children }) => <span>{children}</span>,
-    useMap: () => ({ flyTo: mapMocks.flyTo, getZoom: mapMocks.getZoom }),
+    useMap: () => map,
   };
 });
 
@@ -64,6 +65,9 @@ const fire = {
   satellite: "Suomi NPP",
   frp: 8,
 };
+
+const fires = [fire];
+const incidents = [];
 
 function Harness() {
   const [selectedKey, setSelectedKey] = useState(null);
@@ -79,9 +83,9 @@ function Harness() {
   return (
     <>
       <FireMap
-        fires={[fire]}
+        fires={fires}
         hasError={false}
-        incidents={[]}
+        incidents={incidents}
         layer="detections"
         loading={false}
         mapFocusRef={mapFocusRef}
@@ -92,9 +96,9 @@ function Harness() {
         selectedKey={selectedKey}
       />
       <DataExplorer
-        fires={[fire]}
+        fires={fires}
         focusRequest={focusRequest}
-        incidents={[]}
+        incidents={incidents}
         layer="detections"
         onShowOnMap={showOnMap}
         selectedKey={selectedKey}
