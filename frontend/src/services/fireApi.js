@@ -181,24 +181,3 @@ export async function fetchIncidents({ days, forceRefresh, signal }) {
 
   return result;
 }
-
-export async function interpretFireSearch({ question, signal }) {
-  const result = await requestJson({
-    path: "/search/interpret",
-    method: "POST",
-    body: { question },
-    signal,
-  });
-  const validStatus = ["filters", "unsupported", "emergency_advice"].includes(
-    result.data?.status,
-  );
-  const hasExpectedFilters =
-    result.data?.status === "filters"
-      ? result.data.filters && typeof result.data.filters === "object"
-      : result.data?.filters == null;
-
-  if (!validStatus || !hasExpectedFilters) {
-    throw new FireApiError("malformed", { requestId: result.requestId });
-  }
-  return result;
-}

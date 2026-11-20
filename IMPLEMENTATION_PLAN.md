@@ -78,18 +78,10 @@ choose persistent storage (Cloud Run's filesystem is ephemeral), a periodic
 trigger, reader integration, retention and monitoring; validate with the user
 and follow the direct deployment authorization gate.
 
-**Active task: bounded AI-assisted search and measured request performance.**
-
-The live Gemini 3.5 Flash-Lite evaluation passed the release thresholds with
-90.91% exact match, 100% schema validity, 100% safe rejection, and zero false
-accepts. A protected local API route, separate fail-closed client/global cost
-limits, token accounting, deterministic browser filtering, and compact search
-UI are implemented; full validation, visual review, cloud configuration, and
-deployment remain open.
-
 **Next planned priority: Galicia forecast experiment, local historical backtest before deployment.**
 
-This separate feature remains the next planned priority after the active search work.
+The AI search prototype is archived. The application has no search UI, API route,
+Vertex client dependency, or AI runtime configuration.
 See [GALICIA_RISK_PLAN.md](GALICIA_RISK_PLAN.md) for the experiment contract,
 data pipeline, evaluation, integration, acceptance criteria, and later daily
 operation. Data foundations are implemented; the new forecast contract,
@@ -123,10 +115,8 @@ detections alone do not establish an industrial classification.
 
 **Resume after the priority feature: Milestone 1.3, add filtering and sorting.**
 
-User-directed work on 2026-10-29 also started two bounded foundations: safe
-request-stage measurement plus snapshot-keyed incident caching, and a strict
-provider-independent AI filter contract. Vertex AI remains disabled and no AI
-route is public; production baselines and model evaluation are still required.
+Request-stage measurement and snapshot-keyed incident caching are implemented.
+Production performance baselines remain pending.
 
 Milestone 0 and Steps 1.1–1.2 are implemented and verified locally. The live map
 has explicit request states, independent parallel refresh, and an accessible
@@ -327,13 +317,6 @@ Acceptance criteria:
 - The primary flow has no serious automated accessibility violations.
 
 ### 1.3 Add Filtering And Sorting
-
-Future task plan: [add bounded AI-assisted natural-language search](AI_ASSISTED_SEARCH_PLAN.md).
-
-- [x] Add a strict provider-independent model-output schema, bounded input and
-  output validation, and an initial bilingual adversarial evaluation set.
-- [ ] Evaluate Gemini 3.5 Flash-Lite against the versioned set before adding a
-  public endpoint or enabling Vertex AI.
 
 - [ ] Define filter semantics for confidence, minimum FRP, satellite, time, and
   cluster persistence or trend.
@@ -997,6 +980,7 @@ final selection. See D1–D4 and F3/F4/F6 in FORECAST_VALIDATION_SUBPLAN.md.
 | 2026-10-29 | Started measured request-performance work with safe stage timings and snapshot-keyed incident derivation caching; added a disabled-by-default strict AI filter contract and bilingual adversarial evaluation seed set without calling Vertex AI. |
 | 2026-10-29 | Measured cached clustering and per-window coordination locally; added the disabled Gemini 3.5 Flash-Lite structured-output adapter and deterministic evaluation runner without making a cloud model call. |
 | 2026-10-29 | Ran the authorized Vertex evaluation, added privacy-safe token accounting, passed AI acceptance thresholds, and implemented the protected local search route, separate cost buckets, deterministic browser filters, privacy copy, and compact search UI. No deployment was performed. |
+| 2026-11-20 | Retired AI search from the frontend and API, removed runtime configuration, and preserved the prototype as text in the implementation archive. |
 | 2026-10-28 | Revised the local redesign after user review: restored the Wildfire Tracker name, original thermal flame, warm-black surfaces, and orange gradient while preserving the compact map-first layout and pagination. |
 | 2026-10-28 | Refined the restored identity: enlarged the original flame with heat rings, removed the unclear Methodology header link, made Privacy open and focus its disclosure, and replaced the refresh gradient with solid ember. |
 | 2026-10-28 | Polished the dark fire identity with a layered thermal-night background and a three-level button hierarchy: coral primary, warm selected layer, and raised dark secondary actions. |

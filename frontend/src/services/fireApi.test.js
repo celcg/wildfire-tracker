@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   classifyNetworkError,
   fetchFires,
-  interpretFireSearch,
   parseRetryAfter,
   sanitizeRequestId,
 } from "./fireApi.js";
@@ -149,30 +148,4 @@ test("parses HTTP-date retry values and rejects unsafe request IDs", () => {
     10,
   );
   assert.equal(sanitizeRequestId("upstream said: secret"), null);
-});
-
-test("sends AI questions only in a protected JSON POST", async () => {
-  let request;
-  globalThis.fetch = async (url, options) => {
-    request = { url, options };
-    return new Response(
-      JSON.stringify({
-        status: "filters",
-        filters: { days: 3, layer: "clusters", sort: "persistent", limit: 20 },
-      }),
-      { headers: { "Content-Type": "application/json" } },
-    );
-  };
-
-  const result = await interpretFireSearch({
-    question: "Clusters persistentes de tres días",
-  });
-
-  assert.match(request.url, /\/search\/interpret$/);
-  assert.equal(request.options.method, "POST");
-  assert.equal(request.options.headers["Content-Type"], "application/json");
-  assert.deepEqual(JSON.parse(request.options.body), {
-    question: "Clusters persistentes de tres días",
-  });
-  assert.equal(result.data.filters.days, 3);
 });

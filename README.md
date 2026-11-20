@@ -57,15 +57,12 @@ flowchart LR
         Middleware["FastAPI middleware · CORS + request logging"] --> Attestation["App Check + UUID validation"]
         Attestation --> Limiter["Token bucket · 5 requests/min/client"]
         Limiter --> Routes["/fires · /stats · /incidents"]
-        Attestation --> AILimiter["AI buckets · client + global · fail closed"]
-        AILimiter --> AISearch["/search/interpret · closed filter schema"]
         Routes --> ServerCache["NASA access · 1 h cache + cold-start backoff"]
         Routes --> Clustering[Snapshot-cached spatiotemporal clustering]
         AppLogs[Application events]
     end
 
     ServerCache -->|"Coalesced refresh · max once/hour/instance"| NASA[NASA FIRMS]
-    AISearch -->|"Question only · no fire data or tools"| Vertex[Vertex AI · Gemini 3.5 Flash-Lite]
     Scheduler[Cloud Scheduler · hourly OIDC] --> Ingest[POST /internal/ingest]
     Ingest --> ServerCache
     Ingest --> BigQuery["BigQuery · detections + hourly cluster snapshots"]
@@ -96,11 +93,8 @@ files are used only during local development.
 Repeated `/incidents` reads reuse a derivation only while the underlying NASA
 snapshot is unchanged. `Server-Timing` exposes aggregate backend stages and the
 React API service keeps local App Check/network/JSON timings for diagnosis;
-neither mechanism records identities, payloads, or coordinates. The bounded
-AI-assisted search is implemented locally behind a disabled-by-default feature
-flag. Gemini 3.5 Flash-Lite receives only the short question and a closed schema;
-React applies the filters to data already in the browser. Separate client and
-global buckets fail closed before paid inference if Firestore is unavailable.
+neither mechanism records identities, payloads, or coordinates. The former AI search
+prototype is documented in [the archive](docs/archive/ai-search/README.md).
 
 ## Tech Stack + Why
 
@@ -117,7 +111,6 @@ global buckets fail closed before paid inference if Firestore is unavailable.
 - **Secret Manager:** keeps the NASA key outside source code and literal Cloud Run environment values while preserving the established `NASA_KEY` runtime interface.
 - **BigQuery:** stores partitioned, one-year analytical history without putting the public map on a data-warehouse dependency.
 - **Cloud Scheduler:** triggers one authenticated, idempotent ingestion each hour.
-- **Vertex AI / Gemini 3.5 Flash-Lite:** converts optional bilingual questions into a closed, validated filter object without tools or access to application data.
 
 ## Logging and Request Correlation
 
@@ -244,7 +237,6 @@ GET /fires?days=3&refresh=true
 GET /stats?days=1
 GET /incidents?days=3
 GET /incidents?days=3&refresh=true
-POST /search/interpret
 POST /internal/ingest
 ```
 

@@ -2,7 +2,6 @@ const PROVIDERS = [
   ["Firebase Hosting", "Delivers the web application."],
   ["Google Cloud Run", "Processes API requests."],
   ["Cloud Logging", "Keeps operational and security records."],
-  ["Vertex AI", "Interprets an optional search question into fixed map filters."],
   ["OpenStreetMap", "Provides the map tiles requested by your browser."],
 ];
 
@@ -43,10 +42,7 @@ export function PrivacyNotice() {
             These providers may receive technical metadata such as an IP
             address, browser information, request time, and requested resource.
             Firebase App Check also verifies that API requests originate from
-            the published application. If you use automated search, the text
-            you enter is sent to Vertex AI. Fire coordinates, map data, the
-            installation identifier, and App Check token are not included in
-            that model request.
+            the published application.
           </p>
         </section>
 

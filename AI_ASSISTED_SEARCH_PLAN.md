@@ -1,5 +1,7 @@
 # AI-Assisted Fire Search Task Plan
 
+> Archived prototype. The UI, HTTP route and Vertex integration were retired. See [implementation archive](docs/archive/ai-search/README.md).
+
 ## Goal
 
 Let users ask controlled natural-language questions such as “persistent fires

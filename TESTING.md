@@ -147,9 +147,6 @@ runner prints aggregate metrics only and must not be used in normal test suites.
 | `test_rate_limit.py` | Security and abuse protection | Client identity, App Check, Firestore bucket, or fallback changes |
 | `test_logging.py` | Privacy and HTTP logging | Logging, redaction, request IDs, rotation, or CORS changes |
 | `test_historical_ingest.py` | Persistence and Scheduler | Historical IDs, ingestion, Scheduler auth, BigQuery SQL/schema/migration changes |
-| `test_ai_search.py` | AI trust boundary and evaluation metrics | Filter schema, prompt boundary, evaluation cases, or metric changes |
-| `test_vertex_ai_search.py` | Vertex adapter without cloud access | Model, structured output, timeout, retry, or SDK changes |
-| `test_ai_rate_limit.py` | AI cost and abuse boundary | Client/global AI buckets, fail-closed behavior, or body limits |
 | `test_performance_benchmark.py` | Synthetic benchmark contract | Benchmark dataset or reported metric changes |
 
 `run_smoke_tests.py` selects representative tests across these boundaries. It is

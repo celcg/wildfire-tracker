@@ -5,18 +5,11 @@ from time import perf_counter
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
 
 from client_identity import CLIENT_ID_HEADER
-from ai_rate_limit import enforce_ai_request
-from ai_search import (
-    FireSearchInterpretation,
-    SearchQuestion,
-    interpret_question,
-)
-from config import ALLOWED_ORIGINS, AI_SEARCH_MAX_REQUEST_BYTES, FIRE_COLUMNS
+from config import ALLOWED_ORIGINS, FIRE_COLUMNS
 from firebase_security import APP_CHECK_HEADER
 from fire_data import (
     DATA_AGE_SECONDS_ATTR,
@@ -37,63 +30,9 @@ from logging_config import (
 from rate_limit import enforce_rate_limit
 from schemas import IncidentCollection
 from scheduler_auth import enforce_scheduler_auth
-from vertex_ai_search import get_vertex_search_generator
 
 
 logger = get_logger("http")
-
-
-class AiSearchBodyLimitMiddleware:
-    """Bound the public AI body before FastAPI allocates or parses arbitrary JSON."""
-
-    def __init__(self, app, max_bytes: int) -> None:
-        self.app = app
-        self.max_bytes = max_bytes
-
-    async def __call__(self, scope, receive, send) -> None:
-        if scope.get("type") != "http" or scope.get("path") != "/search/interpret":
-            await self.app(scope, receive, send)
-            return
-
-        headers = dict(scope.get("headers", []))
-        declared_length = headers.get(b"content-length")
-        if declared_length:
-            try:
-                if int(declared_length) > self.max_bytes:
-                    await self._reject(scope, receive, send, 413, "Search request is too large.")
-                    return
-            except ValueError:
-                await self._reject(scope, receive, send, 400, "Invalid Content-Length.")
-                return
-
-        # Buffering finishes before the application is called, but the buffer can
-        # never exceed the configured limit. This also covers chunked requests.
-        messages = []
-        received_bytes = 0
-        while True:
-            message = await receive()
-            if message.get("type") != "http.request":
-                messages.append(message)
-                break
-            received_bytes += len(message.get("body", b""))
-            if received_bytes > self.max_bytes:
-                await self._reject(scope, receive, send, 413, "Search request is too large.")
-                return
-            messages.append(message)
-            if not message.get("more_body", False):
-                break
-
-        async def replay_receive():
-            if messages:
-                return messages.pop(0)
-            return {"type": "http.request", "body": b"", "more_body": False}
-
-        await self.app(scope, replay_receive, send)
-
-    @staticmethod
-    async def _reject(scope, receive, send, status_code: int, detail: str) -> None:
-        response = JSONResponse({"detail": detail}, status_code=status_code)
-        await response(scope, receive, send)
 
 
 def _append_server_timing(
@@ -251,38 +190,6 @@ def ingest_history() -> IngestionResult:
     return ingest_fire_history()
 
 
-def interpret_fire_search(payload: SearchQuestion) -> FireSearchInterpretation:
-    """Translate one bounded question into filters without exposing data or tools."""
-    started_at = perf_counter()
-    try:
-        interpretation = interpret_question(
-            payload.question,
-            get_vertex_search_generator(),
-        )
-    except Exception as exc:
-        log_event(
-            logger,
-            logging.WARNING,
-            "ai_search.failed",
-            error_type=type(exc).__name__,
-            duration_ms=round((perf_counter() - started_at) * 1000, 2),
-        )
-        raise HTTPException(
-            status_code=503,
-            detail="Search interpretation is temporarily unavailable.",
-            headers={"Retry-After": "60"},
-        ) from None
-
-    log_event(
-        logger,
-        logging.INFO,
-        "ai_search.completed",
-        status=interpretation.status,
-        duration_ms=round((perf_counter() - started_at) * 1000, 2),
-    )
-    return interpretation
-
-
 def create_app() -> FastAPI:
     """Build the HTTP boundary while keeping domain services framework-light."""
     configure_logging()
@@ -291,18 +198,13 @@ def create_app() -> FastAPI:
         description="Recent NASA FIRMS detections for the Iberian Peninsula.",
     )
 
-    application.add_middleware(
-        AiSearchBodyLimitMiddleware,
-        max_bytes=AI_SEARCH_MAX_REQUEST_BYTES,
-    )
-
     # CORS is intentionally an allowlist: the public API need not authorize
     # arbitrary browser origins even though it has no user credentials.
     application.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET"],
         allow_headers=[
             "Accept",
             "Content-Type",
@@ -339,13 +241,6 @@ def create_app() -> FastAPI:
         methods=["GET"],
         response_model=IncidentCollection,
         dependencies=[Depends(enforce_rate_limit)],
-    )
-    application.add_api_route(
-        "/search/interpret",
-        interpret_fire_search,
-        methods=["POST"],
-        response_model=FireSearchInterpretation,
-        dependencies=[Depends(enforce_ai_request)],
     )
     application.add_api_route(
         "/internal/ingest",

@@ -27,7 +27,6 @@ flowchart LR
     Hosting --> SPA[React SPA]
     SPA -->|JSON + security headers| API[FastAPI on Cloud Run]
     API -->|bounded CSV request| NASA[NASA FIRMS]
-    API -->|question + closed JSON schema| Vertex[Vertex AI Gemini Flash-Lite]
     API <--> Firestore[(Firestore token buckets)]
     Scheduler[Cloud Scheduler] -->|OIDC POST| API
     API --> BigQuery[(BigQuery history)]
@@ -50,7 +49,6 @@ the public map never reads from it and remains operational if ingestion fails.
 | `useFireData` | Detection state, request cancellation, browser-cache reads/writes, freshness, and latest-request-wins behavior. |
 | `useIncidentData` | Lazy cluster loading with the same cancellation and cache semantics. Clusters are not fetched until requested. |
 | `fireApi.js` | HTTP contract, query construction, response-shape checks, freshness headers, request IDs, typed client errors, and in-memory request-stage timings. |
-| `FireSearch.jsx` / `fireSearch.js` | Compact bilingual search interaction and deterministic filtering of browser-held records. |
 | `requestSecurity.js` | Adds the anonymous installation ID and Firebase App Check token. |
 | `cacheStorage.js` | Defensive versioned `localStorage` adapter; storage failure never makes fresh data unusable. |
 | Domain presentation modules | Convert confidence, FRP, age, severity, and identities into stable UI representations. |
@@ -69,9 +67,6 @@ During local development Vite proxies `/api` to `127.0.0.1:8000`.
 | `fire_data.py` | NASA access policy, process cache, refresh coalescing, stale-if-error, and cold-start exponential backoff. |
 | `incident_clustering.py` | Haversine distance, time-aware connected components, FRP summaries, trends, and buffered convex envelopes. |
 | `incident_data.py` | Snapshot-keyed incident derivation cache and same-window single-flight coordination. |
-| `ai_search.py` | Strict provider-independent natural-language-to-filter contract. |
-| `vertex_ai_search.py` | Disabled-by-default Gemini 3.5 Flash-Lite adapter with structured output, one attempt, and a bounded timeout. |
-| `ai_search_evaluator.py` | Bilingual exact-filter, schema-validity, safe-rejection, false-accept, and latency metrics. |
 | `ai_rate_limit.py` | Fail-closed per-installation and global AI token buckets that bound paid calls across instances. |
 | `client_identity.py` | Canonical UUID validation and HMAC-SHA256 pseudonymous Firestore key generation. |
 | `firebase_security.py` | Firebase App Check verification for production callers. |
@@ -180,12 +175,10 @@ for rate limiting is separate, HMAC-hashed before storage, and never logged.
 | `GET /fires` | App Check + client rate limit in production | `days=1..10`, optional `refresh` | Array of detection objects |
 | `GET /stats` | App Check + client rate limit in production | `days=1..10` | Count, FRP aggregates, satellite counts |
 | `GET /incidents` | App Check + client rate limit in production | `days=1..10`, optional `refresh` | `IncidentCollection` |
-| `POST /search/interpret` | App Check + client and global AI limits | JSON question, maximum 240 characters | Closed filter interpretation or safe rejection |
 | `POST /internal/ingest` | Exact Scheduler service-account OIDC token | No public body | Ingestion counts and snapshot timestamp |
 
 `POST /internal/ingest` is omitted from OpenAPI. Browser CORS allows only the
-configured localhost and Firebase origins, with `POST` exposed solely so the
-protected search route can receive JSON. CORS is a browser policy, not an
+configured localhost and Firebase origins for browser reads. CORS is a browser policy, not an
 authentication mechanism.
 
 ### 5.2 Detection contract
@@ -343,17 +336,6 @@ sequenceDiagram
     end
 ```
 
-### 6.4 AI-assisted search boundary (prepared, not active)
-
-`ai_search.py` validates a short user question and accepts model output only as
-one closed JSON filter object. It rejects extra/duplicate fields, prose, SQL,
-control characters, excessive output and out-of-range values. The future Vertex
-adapter may receive only the question, fixed instruction and JSON schema; it
-will not receive detections, coordinates, visitor identifiers or credentials.
-There is currently no HTTP route and no model call has been made, so this code
-creates no cloud traffic or cost until the explicit evaluation command runs.
-The bilingual evaluation set must pass before activation.
-
 ## 7. Security, privacy, and cost controls
 
 - NASA credentials and the HMAC secret come from Secret Manager in production.
@@ -410,7 +392,6 @@ in `DEPLOYMENT.md`.
 | Frontend validates response shape, not every scalar field | Semantically bad values could reach presentation code if backend contracts regress. | Add a lightweight runtime schema at the HTTP boundary if the API gains more producers. |
 | Browser errors are not sent to a remote collector | Client-only failures require reproduction or the displayed request ID. | Add privacy-reviewed client telemetry only if operational need outweighs data collection. |
 | Performance stages are instrumented but production baselines and budgets are not recorded | Improvements cannot yet be quantified across cold, warm, stale, and browser-cache paths. | Capture representative measurements before changing clustering or rendering algorithms. |
-| AI search has a local contract, adapter, and seed evaluation set but no route | It is not user-accessible and no live model quality or cost claim is established. | Evaluate the fixed model, approve budget/quota controls, then add the rate-limited endpoint. |
 | Production delivery is manual | Configuration drift and ordering mistakes remain possible. | Move services, IAM, budgets, Scheduler, and migrations to reviewed infrastructure-as-code. |
 
 ## 10. Architectural invariants

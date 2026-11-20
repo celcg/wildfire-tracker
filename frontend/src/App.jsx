@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 import { AppHeader } from "./components/AppHeader";
 import { DataExplorer } from "./components/DataExplorer";
 import { DataErrorNotice } from "./components/DataErrorNotice";
 import { FireMap } from "./components/FireMap";
-import { FireSearch } from "./components/FireSearch";
 import { IncidentSummary } from "./components/IncidentSummary";
 import { ObservationToolbar } from "./components/ObservationToolbar";
 import { PrivacyNotice } from "./components/PrivacyNotice";
@@ -17,7 +16,6 @@ import {
 import { useFireData } from "./hooks/useFireData";
 import { useIncidentData } from "./hooks/useIncidentData";
 import { refreshAllLayers } from "./services/refreshAllLayers";
-import { applyFireSearchFilters } from "./domain/fireSearch";
 
 const EMPTY_INCIDENTS = [];
 
@@ -27,36 +25,16 @@ function App() {
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
   const [selectionFocusRequest, setSelectionFocusRequest] = useState(0);
-  const [searchFilters, setSearchFilters] = useState(null);
   const selectedResultRef = useRef(null);
 
   // App composes feature sections; networking and browser APIs stay in hooks.
   const fireData = useFireData();
   const incidentData = useIncidentData();
   const showClusters = layer === "clusters";
-  const visibleFires = useMemo(
-    () => applyFireSearchFilters(fireData.fires, "detections", searchFilters),
-    [fireData.fires, searchFilters],
-  );
-  const visibleIncidents = useMemo(
-    () =>
-      applyFireSearchFilters(
-        incidentData.collection?.incidents ?? EMPTY_INCIDENTS,
-        "clusters",
-        searchFilters,
-      ),
-    [incidentData.collection, searchFilters],
-  );
-  const activeCollection = incidentData.collection
-    ? {
-        ...incidentData.collection,
-        incident_count: visibleIncidents.length,
-        incidents: visibleIncidents,
-      }
-    : null;
+  const activeCollection = incidentData.collection;
   const activeCount = showClusters
     ? (activeCollection?.incident_count ?? 0)
-    : visibleFires.length;
+    : fireData.fires.length;
   const activeError = showClusters ? incidentData.error : fireData.error;
   const activeLoading = showClusters
     ? incidentData.loading
@@ -72,7 +50,6 @@ function App() {
     `${days} days`;
 
   const handleDaysChange = (nextDays) => {
-    setSearchFilters(null);
     setSelectedKey(null);
     setDays(nextDays);
 
@@ -84,7 +61,6 @@ function App() {
   };
 
   const handleLayerChange = (nextLayer) => {
-    setSearchFilters(null);
     setSelectedKey(null);
     setLayer(nextLayer);
 
@@ -101,19 +77,6 @@ function App() {
       await refreshAllLayers({ days, fireData, incidentData });
     } finally {
       setRefreshingAll(false);
-    }
-  };
-
-  const handleSearchApply = (filters) => {
-    const nextDays = String(filters.days);
-    setSelectedKey(null);
-    setSearchFilters(filters);
-    setDays(nextDays);
-    setLayer(filters.layer);
-    if (filters.layer === "clusters") {
-      incidentData.loadIncidents(nextDays);
-    } else {
-      fireData.loadFires(nextDays);
     }
   };
 
@@ -136,12 +99,6 @@ function App() {
         readoutLabel={showClusters ? "Possible clusters" : "Active detections"}
       />
 
-      <FireSearch
-        activeFilters={searchFilters}
-        onApply={handleSearchApply}
-        onClear={() => setSearchFilters(null)}
-      />
-
       {activeError ? (
         <DataErrorNotice
           error={activeError}
@@ -159,7 +116,7 @@ function App() {
 
       <div className="map-workspace">
         <FireMap
-          fires={visibleFires}
+          fires={fireData.fires}
           incidents={activeCollection?.incidents ?? EMPTY_INCIDENTS}
           hasError={Boolean(activeError)}
           layer={layer}
@@ -174,7 +131,7 @@ function App() {
       </div>
 
       <DataExplorer
-        fires={visibleFires}
+        fires={fireData.fires}
         incidents={activeCollection?.incidents ?? EMPTY_INCIDENTS}
         layer={layer}
         focusRequest={selectionFocusRequest}
